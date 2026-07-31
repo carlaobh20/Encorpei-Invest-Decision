@@ -26,96 +26,37 @@ type Evento = {
   criado_em: string;
 };
 
-async function ScoreSection({ tickerUp }: { tickerUp: string }) {
-  if (!supabase) return null;
-  const { data } = await supabase
-    .from("scores")
-    .select("data, qualidade, valuation, risco, score_final, confianca, decomposicao")
-    .eq("ticker", tickerUp)
-    .order("data", { ascending: false })
-    .limit(1);
-  const s = data?.[0] as
-    | {
-        data: string; qualidade: number | null; valuation: number | null;
-        risco: number | null; score_final: number; confianca: string;
-        decomposicao: {
-          componente: string; regra: string; valor: string; pontos: number;
-        }[];
-      }
-    | undefined;
-  if (!s) return null;
+type Score = {
+  data: string;
+  qualidade: number | null;
+  valuation: number | null;
+  risco: number | null;
+  score_final: number;
+  confianca: string;
+  decomposicao: { componente: string; regra: string; valor: string; pontos: number }[];
+};
 
-  const blocos: [string, number | null][] = [
-    ["Qualidade", s.qualidade],
-    ["Valuation", s.valuation],
-    ["Risco", s.risco],
-  ];
-  return (
-    <section className="mt-8">
-      <h2 className="text-sm uppercase tracking-widest text-slate-500">
-        Nota do Decision Engine
-      </h2>
-      <p className="mt-1 text-xs text-slate-500">
-        Calculada por regras fixas (algoritmo v1), não por opinião. Cada linha
-        abaixo mostra a régua usada, o valor real da empresa e os pontos que
-        ele rendeu. Nota de {s.data.split("-").reverse().join("/")}.
-      </p>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="rounded-xl border border-emerald-800 bg-emerald-950/30 px-5 py-3 text-center">
-          <p className="text-3xl font-bold text-emerald-400">{s.score_final}</p>
-          <p className="text-xs text-slate-500">nota final · confiança {s.confianca}</p>
-        </div>
-        {blocos.map(([nome, v]) => (
-          <div key={nome} className="text-center">
-            <p className="text-xl font-semibold text-slate-200">{v ?? "—"}</p>
-            <p className="text-xs text-slate-500">{nome}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3 space-y-1">
-        {s.decomposicao.map((d, i) => (
-          <div
-            key={i}
-            className="flex items-center justify-between rounded-lg bg-slate-900/70 px-3 py-2 text-xs"
-          >
-            <span className="text-slate-300">
-              <span className="uppercase text-slate-600">{d.componente}</span>{" "}
-              · {d.regra}
-            </span>
-            <span className="text-slate-400">
-              {d.valor} → <span className="font-semibold text-slate-200">{d.pontos} pts</span>
-            </span>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-const STATUS_UI: Record<
-  string,
-  { rotulo: string; cor: string; significado: string }
-> = {
+const STATUS_UI: Record<string, { rotulo: string; cor: string; significado: string }> = {
   valida: {
     rotulo: "Válida",
-    cor: "text-emerald-400 border-emerald-700",
+    cor: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10",
     significado: "os dados continuam confirmando a tese",
   },
   em_revisao: {
     rotulo: "Em revisão",
-    cor: "text-amber-400 border-amber-700",
+    cor: "text-amber-300 border-amber-500/40 bg-amber-500/10",
     significado: "um sinal de alerta disparou — estude antes de decidir",
   },
   quebrada: {
     rotulo: "Quebrada",
-    cor: "text-red-400 border-red-700",
+    cor: "text-red-300 border-red-500/40 bg-red-500/10",
     significado: "a premissa central deixou de valer",
   },
 };
 
 function fmtData(d: string) {
   return new Date(d).toLocaleString("pt-BR", {
-    day: "2-digit", month: "2-digit", year: "numeric",
+    day: "2-digit", month: "2-digit", year: "2-digit",
     hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo",
   });
 }
@@ -130,7 +71,7 @@ export default async function TesePage({
 
   if (!isSupabaseConfigured || !supabase) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 p-10">
+      <main className="min-h-dvh bg-slate-950 p-10 text-slate-100">
         Supabase não configurado.
       </main>
     );
@@ -152,22 +93,19 @@ export default async function TesePage({
 
   if (!tese) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 p-10">
+      <main className="min-h-dvh bg-slate-950 p-10 text-slate-100">
         <p>
           Nenhuma tese ativa para {tickerUp}.{" "}
-          <Link href="/teses" className="text-emerald-400 hover:underline">
-            ← voltar
-          </Link>
+          <Link href="/teses" className="text-emerald-400 hover:underline">← voltar</Link>
         </p>
       </main>
     );
   }
 
-  // métricas ATUAIS do ticker (mesma lógica do motor de gatilhos)
   const metricasAtuais: Record<string, number | null> = {
     roic: null, margem_liquida: null, divida_liquida: null, queda_preco_30d: null,
   };
-  const [{ data: fund }, { data: precos }, { data: gatilhos }, { data: eventos }] =
+  const [{ data: fund }, { data: precos }, { data: gatilhos }, { data: eventos }, { data: scoreRows }] =
     await Promise.all([
       supabase
         .from("fundamentos")
@@ -191,7 +129,13 @@ export default async function TesePage({
         .select("id, tipo, explicacao, criado_em")
         .eq("tese_id", tese.id)
         .order("criado_em", { ascending: false })
-        .limit(50),
+        .limit(30),
+      supabase
+        .from("scores")
+        .select("data, qualidade, valuation, risco, score_final, confianca, decomposicao")
+        .eq("ticker", tese.ticker)
+        .order("data", { ascending: false })
+        .limit(1),
     ]);
 
   if (fund?.[0]) {
@@ -213,135 +157,170 @@ export default async function TesePage({
   const competencia = fund?.[0]?.competencia
     ? String(fund[0].competencia).split("-").reverse().join("/")
     : null;
-
+  const score = scoreRows?.[0] as Score | undefined;
   const ui = STATUS_UI[tese.status] ?? STATUS_UI.valida;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <div className="mx-auto max-w-3xl">
-        <Link href="/teses" className="text-xs text-slate-500 hover:text-slate-300">
-          ← todas as teses
-        </Link>
-
-        <div className="mt-4 flex items-center justify-between">
-          <h1 className="text-3xl font-bold">
-            <span className="font-mono">{tese.ticker}</span>
-            <span className="ml-3 text-xl font-normal text-slate-400">
-              {tese.empresas?.nome}
+    <main className="h-dvh overflow-hidden bg-slate-950 text-slate-100 [background:radial-gradient(80%_60%_at_50%_0%,rgba(16,185,129,0.07),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(59,130,246,0.05),transparent),#020617]">
+      <div className="mx-auto flex h-full max-w-6xl flex-col gap-3 px-6 py-4">
+        {/* ---------- cabeçalho ---------- */}
+        <header className="flex items-end justify-between">
+          <div>
+            <Link href="/teses" className="text-[11px] uppercase tracking-[0.25em] text-slate-500 hover:text-emerald-400">
+              ← Teses Vivas
+            </Link>
+            <div className="mt-1 flex items-baseline gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">
+                <span className="font-mono">{tese.ticker}</span>
+              </h1>
+              <span className="text-lg text-slate-400">{tese.empresas?.nome}</span>
+              <span className="text-xs text-slate-600">
+                v{tese.versao} · convicção {tese.confianca}
+                {competencia && <> · dados de {competencia}</>}
+              </span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className={`rounded-full border px-4 py-1.5 text-sm font-medium ${ui.cor}`}>
+              {ui.rotulo}
             </span>
-          </h1>
-          <span className={`rounded-full border px-4 py-1 text-sm ${ui.cor}`}>
-            {ui.rotulo}
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-slate-500">
-          Tese v{tese.versao} · Convicção: {tese.confianca} · criada em{" "}
-          {fmtData(tese.criado_em)}
-        </p>
-        <p className="mt-2 text-sm text-slate-400">
-          Status &quot;{ui.rotulo}&quot; = {ui.significado}.
-        </p>
+            <p className="mt-1 text-[11px] text-slate-500">{ui.significado}</p>
+          </div>
+        </header>
 
-        <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-sm uppercase tracking-widest text-slate-500">
-            A tese
-          </h2>
-          <p className="mt-3 leading-relaxed text-slate-200">{tese.texto}</p>
-        </section>
+        {/* ---------- corpo em grade, sem rolagem de página ---------- */}
+        <div className="grid min-h-0 flex-1 grid-cols-12 gap-3">
+          {/* coluna esquerda: tese + nota */}
+          <div className="col-span-12 flex min-h-0 flex-col gap-3 lg:col-span-5">
+            <section className="rounded-2xl border border-white/5 bg-white/[0.03] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">A tese</h2>
+              <p className="mt-2 text-[13.5px] leading-relaxed text-slate-200">{tese.texto}</p>
+            </section>
 
-        <section className="mt-8">
-          <h2 className="text-sm uppercase tracking-widest text-slate-500">
-            Gatilhos vigiados
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            <span className="text-red-400">Vermelhos</span> = sinais de que a
-            tese pode estar se deteriorando ·{" "}
-            <span className="text-emerald-400">Verdes</span> = possíveis
-            oportunidades. O robô confere todos, todo dia útil, sozinho.
-            {competencia && (
-              <> Dados fundamentais do trimestre encerrado em {competencia}.</>
-            )}
-          </p>
-
-          <div className="mt-4 space-y-3">
-            {(gatilhos as Gatilho[] | null)?.map((g) => {
-              const info = METRICAS[g.metrica];
-              const atual = metricasAtuais[g.metrica];
-              const disparado =
-                atual !== null &&
-                atual !== undefined &&
-                condicaoAtendida(g.operador, Number(atual), Number(g.valor));
-              return (
-                <div
-                  key={g.id}
-                  className={`rounded-xl border p-4 ${
-                    g.direcao === "negativo"
-                      ? "border-red-900/60 bg-red-950/20"
-                      : "border-emerald-900/60 bg-emerald-950/20"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {info?.nome ?? g.metrica}
-                      </p>
-                      <p className="mt-1 text-xs leading-relaxed text-slate-400">
-                        {info?.explicacao}
-                      </p>
-                    </div>
-                    {disparado && (
-                      <span
-                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-                          g.direcao === "negativo"
-                            ? "bg-red-900/60 text-red-300"
-                            : "bg-emerald-900/60 text-emerald-300"
-                        }`}
-                      >
-                        DISPARADO
-                      </span>
-                    )}
+            {score && (
+              <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/5 bg-white/[0.03] p-5">
+                <div className="flex items-center gap-5">
+                  <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-2 border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+                    <span className="text-3xl font-bold text-emerald-300">{score.score_final}</span>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
-                    <span className="text-slate-300">
-                      {regraEmPortugues(g.metrica, g.operador, Number(g.valor))}
-                    </span>
-                    <span className="text-slate-500">
-                      Hoje:{" "}
-                      <span className={disparado ? "font-semibold text-slate-200" : ""}>
-                        {atual === null || atual === undefined
-                          ? "ainda sem dado"
-                          : fmtValor(g.metrica, Number(atual))}
-                      </span>
-                    </span>
+                  <div className="flex-1">
+                    <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                      Nota do Decision Engine
+                    </h2>
+                    <div className="mt-2 flex gap-6 text-center">
+                      {([["Qualidade", score.qualidade], ["Valuation", score.valuation], ["Risco", score.risco]] as [string, number | null][]).map(
+                        ([nome, v]) => (
+                          <div key={nome}>
+                            <p className="text-lg font-semibold text-slate-200">{v ?? "—"}</p>
+                            <p className="text-[10px] uppercase tracking-wider text-slate-500">{nome}</p>
+                          </div>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <ScoreSection tickerUp={tese.ticker} />
-
-        <section className="mt-8">
-          <h2 className="text-sm uppercase tracking-widest text-slate-500">
-            Linha do tempo (imutável)
-          </h2>
-          <p className="mt-1 text-xs text-slate-500">
-            Cada acontecimento fica registrado para sempre, com a explicação e
-            os dados da causa — ninguém edita o passado, nem o sistema.
-          </p>
-          <div className="mt-3 space-y-3 border-l border-slate-800 pl-4">
-            {(eventos as Evento[] | null)?.map((e) => (
-              <div key={e.id}>
-                <p className="text-xs text-slate-500">
-                  {fmtData(e.criado_em)} ·{" "}
-                  <span className="uppercase">{e.tipo.replace(/_/g, " ")}</span>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  Calculada por regras fixas e versionadas — nunca por opinião. Confiança {score.confianca}.
                 </p>
-                <p className="mt-1 text-sm text-slate-300">{e.explicacao}</p>
-              </div>
-            ))}
+                <div className="mt-2 min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
+                  {score.decomposicao.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between rounded-lg bg-white/[0.03] px-3 py-1.5 text-[11px]">
+                      <span className="text-slate-400">
+                        <span className="mr-1.5 uppercase text-slate-600">{d.componente.slice(0, 4)}</span>
+                        {d.regra}
+                      </span>
+                      <span className="ml-3 shrink-0 text-slate-500">
+                        {d.valor} → <span className="font-semibold text-slate-200">{d.pontos}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-        </section>
+
+          {/* coluna direita: gatilhos + linha do tempo */}
+          <div className="col-span-12 flex min-h-0 flex-col gap-3 lg:col-span-7">
+            <section>
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                  Gatilhos vigiados
+                </h2>
+                <p className="text-[10px] text-slate-600">
+                  <span className="text-red-400/80">vermelho</span> = deterioração ·{" "}
+                  <span className="text-emerald-400/80">verde</span> = oportunidade · conferidos todo dia útil
+                </p>
+              </div>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(gatilhos as Gatilho[] | null)?.map((g) => {
+                  const info = METRICAS[g.metrica];
+                  const atual = metricasAtuais[g.metrica];
+                  const disparado =
+                    atual !== null && atual !== undefined &&
+                    condicaoAtendida(g.operador, Number(atual), Number(g.valor));
+                  return (
+                    <div
+                      key={g.id}
+                      className={`rounded-xl border p-3 ${
+                        g.direcao === "negativo"
+                          ? "border-red-500/15 bg-red-500/[0.04]"
+                          : "border-emerald-500/15 bg-emerald-500/[0.04]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[13px] font-medium">{info?.nome ?? g.metrica}</p>
+                        {disparado && (
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            g.direcao === "negativo"
+                              ? "bg-red-500/20 text-red-300"
+                              : "bg-emerald-500/20 text-emerald-300"
+                          }`}>
+                            DISPARADO
+                          </span>
+                        )}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-slate-500">
+                        {info?.explicacao}
+                      </p>
+                      <div className="mt-2 flex items-center justify-between text-[12px]">
+                        <span className="text-slate-400">
+                          {regraEmPortugues(g.metrica, g.operador, Number(g.valor))}
+                        </span>
+                        <span className="ml-2 shrink-0 rounded-md bg-white/[0.05] px-2 py-0.5 font-mono text-slate-300">
+                          {atual === null || atual === undefined
+                            ? "sem dado"
+                            : fmtValor(g.metrica, Number(atual))}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/5 bg-white/[0.03] p-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                  Linha do tempo
+                </h2>
+                <p className="text-[10px] text-slate-600">
+                  registro imutável — ninguém edita o passado, nem o sistema
+                </p>
+              </div>
+              <div className="mt-2 min-h-0 flex-1 space-y-2.5 overflow-y-auto border-l border-white/10 pl-4 pr-1">
+                {(eventos as Evento[] | null)?.map((e) => (
+                  <div key={e.id} className="relative">
+                    <span className="absolute -left-[21.5px] top-1.5 h-2 w-2 rounded-full bg-emerald-500/60" />
+                    <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                      {fmtData(e.criado_em)} · {e.tipo.replace(/_/g, " ")}
+                    </p>
+                    <p className="mt-0.5 text-[12px] leading-snug text-slate-300">{e.explicacao}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </main>
   );
