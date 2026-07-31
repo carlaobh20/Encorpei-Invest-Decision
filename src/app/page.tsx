@@ -31,6 +31,12 @@ export default function Home() {
           Deploy automático via GitHub → Vercel · Se você está vendo esta
           página, o gate da Fase 0 foi cumprido.
         </p>
+        <a
+          href="/auditoria"
+          className="inline-block rounded-lg border border-emerald-700 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-950"
+        >
+          Auditoria de dados (Fase 1) →
+        </a>
       </div>
     </main>
   );
