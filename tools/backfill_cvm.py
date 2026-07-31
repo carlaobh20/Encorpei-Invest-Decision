@@ -52,7 +52,7 @@ MAPA = {
     "TAEE11": r"TRANSMISSORA ALIAN",
     "EGIE3": r"^ENGIE BRASIL",
     "CPLE6": r"PARANAENSE DE ENERGIA",
-    "ELET3": r"CENTRAIS ELET BRAS|ELETROBRAS",
+    "ELET3": r"CENTRAIS ELETR|CENTRAIS ELET BRAS|ELETROBRAS",
     "SBSP3": r"SANEAMENTO BASICO",
     "UGPA3": r"^ULTRAPAR",
     "VBBR3": r"VIBRA ENERGIA",
@@ -70,6 +70,7 @@ MAPA = {
 }
 
 log_linhas = []
+NOMES_VISTOS: set = set()  # todas as razões sociais vistas (diagnóstico)
 
 
 def log(msg):
@@ -129,6 +130,7 @@ def ler_csv(z: zipfile.ZipFile, sufixo: str) -> pd.DataFrame | None:
     df["VERSAO"] = pd.to_numeric(df["VERSAO"], errors="coerce")
     idx = df.groupby(["CNPJ_CIA", "DT_REFER"])["VERSAO"].transform("max")
     df = df[df["VERSAO"] == idx]
+    NOMES_VISTOS.update(sem_acento(n) for n in df["DENOM_CIA"].unique())
     df["TICKER"] = df["DENOM_CIA"].map(ticker_de)
     return df[df["TICKER"].notna()].copy()
 
@@ -152,10 +154,12 @@ def dias(a, b):
 
 
 def extrair(dre, bpa, bpp, anual: bool, fonte: str, resultados: dict):
+    # ITR mistura, no mesmo documento, o trimestre isolado (ex.: abr–jun)
+    # e o acumulado (jan–jun). Agrupar TAMBÉM por DT_INI_EXERC separa os
+    # dois; o filtro de duração então seleciona só o período desejado.
     alvo_dias = (330, 400) if anual else (80, 100)
-    grupos = dre.groupby(["TICKER", "DT_FIM_EXERC"])
-    for (ticker, fim), g in grupos:
-        ini = g["DT_INI_EXERC"].iloc[0] if "DT_INI_EXERC" in g else None
+    grupos = dre.groupby(["TICKER", "DT_INI_EXERC", "DT_FIM_EXERC"])
+    for (ticker, ini, fim), g in grupos:
         d = dias(ini, fim)
         if d is None or not (alvo_dias[0] <= d <= alvo_dias[1]):
             continue
@@ -264,6 +268,11 @@ def main():
     if faltando:
         rel.append(f"\n## ⚠️ Sem dados (verificar mapeamento de nome): "
                    f"{', '.join(faltando)}")
+        rel.append("\n### Diagnóstico — nomes parecidos vistos nos arquivos:\n")
+        for t in faltando:
+            dica = re.sub(r"[^A-Z ]", "", MAPA[t]).strip().split(" ")[0][:6]
+            parecidos = sorted(n for n in NOMES_VISTOS if dica and dica in n)[:8]
+            rel.append(f"- {t} (buscando '{dica}'): {parecidos or 'nenhum'}")
     rel.append("\n## Períodos por empresa\n")
     for t in sorted(por_ticker):
         rel.append(f"- **{t}**: {len(por_ticker[t])} períodos — "
