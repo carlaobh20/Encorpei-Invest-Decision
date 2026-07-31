@@ -1,17 +1,12 @@
 # Relatório do backfill CVM
 Gerado em 2026-07-31
 
-Períodos extraídos: **229** · Empresas com dados: **39/40**
-
-## ⚠️ Sem dados (verificar mapeamento de nome): AXIA3
-
-### Diagnóstico — nomes parecidos vistos nos arquivos:
-
-- AXIA3 (buscando 'AXIA'): ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.']
+Períodos extraídos: **235** · Empresas com dados: **40/40**
 
 ## Períodos por empresa
 
 - **ABEV3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
+- **AXIA3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **B3SA3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **BBAS3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **BBDC4**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
@@ -54,22 +49,10 @@ Períodos extraídos: **229** · Empresas com dados: **39/40**
 ## Log de execução
 
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2024.zip
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-    DFP 2024: acumulado 38 períodos
+    DFP 2024: acumulado 39 períodos
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-    DFP 2025: acumulado 76 períodos
+    DFP 2025: acumulado 78 períodos
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2025.zip
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-    ITR 2025: acumulado 190 períodos
+    ITR 2025: acumulado 195 períodos
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-      !! CONFLITO de mapeamento em AXIA3: ['AXIA ENERGIA NORDESTE S.A.', 'AXIA ENERGIA NORTE S.A.', 'AXIA ENERGIA S.A.', 'AXIA ENERGIA SUL S.A.'] — ticker descartado neste arquivo
-    ITR 2026: acumulado 229 períodos
+    ITR 2026: acumulado 235 períodos
