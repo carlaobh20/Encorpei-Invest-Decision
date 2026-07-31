@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
             data: dataPregaoSaoPaulo(q.regularMarketTime),
             fechamento: q.regularMarketPrice,
             volume: q.regularMarketVolume ?? null,
+            market_cap: q.marketCap ?? null,
             fonte: "brapi",
           },
           { onConflict: "ticker,data" }

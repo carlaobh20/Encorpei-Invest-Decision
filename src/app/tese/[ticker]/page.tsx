@@ -26,6 +26,72 @@ type Evento = {
   criado_em: string;
 };
 
+async function ScoreSection({ tickerUp }: { tickerUp: string }) {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("scores")
+    .select("data, qualidade, valuation, risco, score_final, confianca, decomposicao")
+    .eq("ticker", tickerUp)
+    .order("data", { ascending: false })
+    .limit(1);
+  const s = data?.[0] as
+    | {
+        data: string; qualidade: number | null; valuation: number | null;
+        risco: number | null; score_final: number; confianca: string;
+        decomposicao: {
+          componente: string; regra: string; valor: string; pontos: number;
+        }[];
+      }
+    | undefined;
+  if (!s) return null;
+
+  const blocos: [string, number | null][] = [
+    ["Qualidade", s.qualidade],
+    ["Valuation", s.valuation],
+    ["Risco", s.risco],
+  ];
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm uppercase tracking-widest text-slate-500">
+        Nota do Decision Engine
+      </h2>
+      <p className="mt-1 text-xs text-slate-500">
+        Calculada por regras fixas (algoritmo v1), não por opinião. Cada linha
+        abaixo mostra a régua usada, o valor real da empresa e os pontos que
+        ele rendeu. Nota de {s.data.split("-").reverse().join("/")}.
+      </p>
+      <div className="mt-3 flex items-center gap-4">
+        <div className="rounded-xl border border-emerald-800 bg-emerald-950/30 px-5 py-3 text-center">
+          <p className="text-3xl font-bold text-emerald-400">{s.score_final}</p>
+          <p className="text-xs text-slate-500">nota final · confiança {s.confianca}</p>
+        </div>
+        {blocos.map(([nome, v]) => (
+          <div key={nome} className="text-center">
+            <p className="text-xl font-semibold text-slate-200">{v ?? "—"}</p>
+            <p className="text-xs text-slate-500">{nome}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 space-y-1">
+        {s.decomposicao.map((d, i) => (
+          <div
+            key={i}
+            className="flex items-center justify-between rounded-lg bg-slate-900/70 px-3 py-2 text-xs"
+          >
+            <span className="text-slate-300">
+              <span className="uppercase text-slate-600">{d.componente}</span>{" "}
+              · {d.regra}
+            </span>
+            <span className="text-slate-400">
+              {d.valor} → <span className="font-semibold text-slate-200">{d.pontos} pts</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const STATUS_UI: Record<
   string,
   { rotulo: string; cor: string; significado: string }
@@ -247,6 +313,8 @@ export default async function TesePage({
             })}
           </div>
         </section>
+
+        <ScoreSection tickerUp={tese.ticker} />
 
         <section className="mt-8">
           <h2 className="text-sm uppercase tracking-widest text-slate-500">

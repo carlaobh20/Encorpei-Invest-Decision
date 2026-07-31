@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
+import { calcularScore } from "@/lib/score";
 
 /**
  * MOTOR DE GATILHOS — coração da Tese Viva.
@@ -126,9 +127,91 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ================= DECISION ENGINE v1 =================
+  // Depois dos gatilhos, calcula o score do dia de cada empresa com tese.
+  // Regras puras (src/lib/score.ts) espelhando versao_algoritmo = 1.
+  const hojeSP = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10);
+  let scores_gravados = 0;
+
+  for (const tese of teses ?? []) {
+    const { data: funds } = await supabase
+      .from("fundamentos")
+      .select("competencia, fonte, roic, margem_liquida, divida_liquida, patrimonio_liquido, lucro_liquido")
+      .eq("ticker", tese.ticker)
+      .order("competencia", { ascending: false });
+    if (!funds || funds.length === 0) continue;
+
+    const maisRecente = funds[0];
+
+    // lucro dos últimos 12 meses: último anual (DFP) + trimestres
+    // posteriores (ITR) - trimestres equivalentes do ano anterior
+    let lucro_ltm: number | null = null;
+    const dfp = funds.find((f) => f.fonte === "cvm_dfp");
+    if (dfp?.lucro_liquido !== null && dfp?.lucro_liquido !== undefined) {
+      lucro_ltm = Number(dfp.lucro_liquido);
+      const posteriores = funds.filter(
+        (f) => f.fonte === "cvm_itr" && f.competencia > dfp.competencia
+      );
+      for (const p of posteriores) {
+        const anoAnterior = `${Number(p.competencia.slice(0, 4)) - 1}${p.competencia.slice(4)}`;
+        const equivalente = funds.find(
+          (f) => f.fonte === "cvm_itr" && f.competencia === anoAnterior
+        );
+        if (p.lucro_liquido === null || !equivalente || equivalente.lucro_liquido === null) {
+          lucro_ltm = null;
+          break;
+        }
+        lucro_ltm += Number(p.lucro_liquido) - Number(equivalente.lucro_liquido);
+      }
+    }
+
+    const { data: precoMc } = await supabase
+      .from("precos_diarios")
+      .select("market_cap")
+      .eq("ticker", tese.ticker)
+      .not("market_cap", "is", null)
+      .order("data", { ascending: false })
+      .limit(1);
+
+    const margensTri = funds
+      .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)
+      .slice(0, 6)
+      .map((f) => Number(f.margem_liquida));
+
+    const resultado = calcularScore({
+      roic: maisRecente.roic !== null ? Number(maisRecente.roic) : null,
+      margem_liquida:
+        maisRecente.margem_liquida !== null ? Number(maisRecente.margem_liquida) : null,
+      divida_liquida:
+        maisRecente.divida_liquida !== null ? Number(maisRecente.divida_liquida) : null,
+      patrimonio_liquido:
+        maisRecente.patrimonio_liquido !== null
+          ? Number(maisRecente.patrimonio_liquido)
+          : null,
+      lucro_ltm,
+      market_cap: precoMc?.[0]?.market_cap ? Number(precoMc[0].market_cap) : null,
+      margens_trimestrais: margensTri,
+    });
+
+    // histórico imutável: primeiro cálculo do dia prevalece
+    const { error: errScore } = await supabase.from("scores").insert({
+      ticker: tese.ticker,
+      data: hojeSP,
+      versao: 1,
+      qualidade: resultado.qualidade,
+      valuation: resultado.valuation,
+      risco: resultado.risco,
+      score_final: resultado.score_final,
+      confianca: resultado.confianca,
+      decomposicao: resultado.decomposicao,
+    });
+    if (!errScore) scores_gravados++;
+  }
+
   return NextResponse.json({
     teses_avaliadas: teses?.length ?? 0,
     disparos,
+    scores_gravados,
     executado_em: new Date().toISOString(),
   });
 }

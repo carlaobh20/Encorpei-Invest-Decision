@@ -36,7 +36,13 @@ export default function Home() {
             href="/teses"
             className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
           >
-            Teses Vivas (Fase 2) →
+            Teses Vivas →
+          </a>
+          <a
+            href="/ranking"
+            className="inline-block rounded-lg border border-emerald-700 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-950"
+          >
+            Ranking →
           </a>
           <a
             href="/auditoria"
