@@ -51,7 +51,7 @@ MAPA = {
     "EQTL3": r"^EQUATORIAL( ENERGIA)? S",
     "TAEE11": r"TRANSMISSORA ALIAN",
     "EGIE3": r"^ENGIE BRASIL",
-    "CPLE6": r"PARANAENSE DE ENERGIA",
+    "CPLE3": r"PARANAENSE DE ENERGIA",  # Copel migrou p/ Novo Mercado (CPLE6 extinto em nov/2025)
     "AXIA3": r"AXIA ENERGIA|CENTRAIS ELETR|CENTRAIS ELET BRAS|ELETROBRAS",
     "SBSP3": r"SANEAMENTO BASICO",
     "UGPA3": r"^ULTRAPAR",
@@ -166,9 +166,15 @@ def extrair(dre, bpa, bpp, anual: bool, fonte: str, resultados: dict):
         receita = valor(g, cds=["3.01"])
         res_bruto = valor(g, cds=["3.03"])
         ebit = valor(g, cds=["3.05"])
-        lucro = valor(
-            g, ds_regex=r"^LUCRO/PREJUIZO CONSOLIDADO DO PERIODO"
-        ) or valor(g, cds=["3.11"])
+        # Padrão de mercado: lucro ATRIBUÍDO AOS CONTROLADORES (3.11.01),
+        # não o consolidado com minoritários (auditoria de 31/07/2026 pegou
+        # a diferença na WEG: 1,45 bi divulgado vs 1,58 bi consolidado).
+        lucro = (
+            valor(g, cds=["3.11.01"])
+            or valor(g, ds_regex=r"^ATRIBUIDO A SOCIOS DA EMPRESA CONTROLADORA")
+            or valor(g, ds_regex=r"^LUCRO/PREJUIZO CONSOLIDADO DO PERIODO")
+            or valor(g, cds=["3.11"])
+        )
 
         ba = bpa[(bpa["TICKER"] == ticker) & (bpa["DT_FIM_EXERC"] == fim)]
         bp = bpp[(bpp["TICKER"] == ticker) & (bpp["DT_FIM_EXERC"] == fim)]
@@ -240,9 +246,10 @@ def main():
         f"-- Gerado automaticamente pelo GitHub Actions em {date.today()}\n\n"
         "-- Correções de universo (idempotentes):\n"
         "insert into public.empresas (ticker, nome, setor) values\n"
-        "  ('AXIA3', 'Axia Energia (ex-Eletrobras)', 'Energia Elétrica')\n"
+        "  ('AXIA3', 'Axia Energia (ex-Eletrobras)', 'Energia Elétrica'),\n"
+        "  ('CPLE3', 'Copel', 'Energia Elétrica')\n"
         "on conflict (ticker) do nothing;\n"
-        "update public.empresas set ativo = false where ticker = 'ELET3';\n\n"
+        "update public.empresas set ativo = false where ticker in ('ELET3','CPLE6');\n\n"
         "insert into public.fundamentos\n"
         "  (ticker, competencia, receita_liquida, lucro_liquido, margem_bruta,\n"
         "   margem_liquida, roic, divida_liquida, caixa, patrimonio_liquido, fonte)\n"
