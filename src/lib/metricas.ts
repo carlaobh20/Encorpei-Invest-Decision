@@ -10,9 +10,9 @@ export type InfoMetrica = {
 
 export const METRICAS: Record<string, InfoMetrica> = {
   roic: {
-    nome: "Retorno sobre o capital (ROIC)",
+    nome: "Retorno sobre o capital (ROIC, após impostos)",
     explicacao:
-      "De cada R$ 100 que a empresa emprega no próprio negócio, quanto ela gera de resultado por ano. É a régua de qualidade: acima de ~12% costuma indicar um negócio que cria valor.",
+      "De cada R$ 100 que a empresa emprega no próprio negócio, quanto ela gera de resultado por ano JÁ DESCONTANDO impostos. Atenção ao comparar: sites como Fundamentus calculam sem descontar impostos, então o número deles é ~50% maior para a mesma empresa e o mesmo balanço. Compare a tendência, não o nível entre fontes.",
     formato: "percentual",
   },
   margem_liquida: {

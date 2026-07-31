@@ -171,10 +171,10 @@ export default async function TesePage({
     await Promise.all([
       supabase
         .from("fundamentos")
-        .select("competencia, roic, margem_liquida, divida_liquida")
+        .select("competencia, fonte, roic, margem_liquida, divida_liquida")
         .eq("ticker", tese.ticker)
         .order("competencia", { ascending: false })
-        .limit(1),
+        .limit(6),
       supabase
         .from("precos_diarios")
         .select("data, fechamento")
@@ -195,9 +195,15 @@ export default async function TesePage({
     ]);
 
   if (fund?.[0]) {
-    metricasAtuais.roic = fund[0].roic;
     metricasAtuais.margem_liquida = fund[0].margem_liquida;
     metricasAtuais.divida_liquida = fund[0].divida_liquida;
+    const roicsTri = fund
+      .filter((f) => f.fonte === "cvm_itr" && f.roic !== null)
+      .slice(0, 4)
+      .map((f) => Number(f.roic));
+    metricasAtuais.roic = roicsTri.length
+      ? roicsTri.reduce((a, b) => a + b, 0) / roicsTri.length
+      : fund[0].roic;
   }
   if (precos && precos.length >= 5) {
     const max = Math.max(...precos.map((p) => Number(p.fechamento)));

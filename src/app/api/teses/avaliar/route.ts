@@ -51,14 +51,23 @@ export async function GET(req: NextRequest) {
 
     const { data: fund } = await supabase
       .from("fundamentos")
-      .select("competencia, roic, margem_liquida, divida_liquida")
+      .select("competencia, fonte, roic, margem_liquida, divida_liquida")
       .eq("ticker", tese.ticker)
       .order("competencia", { ascending: false })
-      .limit(1);
+      .limit(6);
     if (fund?.[0]) {
-      m.roic = fund[0].roic;
+      // margem e dívida: retrato mais recente
       m.margem_liquida = fund[0].margem_liquida;
       m.divida_liquida = fund[0].divida_liquida;
+      // ROIC: média dos últimos 4 trimestres (mata a sazonalidade que
+      // gerou o falso alarme da Intelbras em 31/07/2026)
+      const roicsTri = fund
+        .filter((f) => f.fonte === "cvm_itr" && f.roic !== null)
+        .slice(0, 4)
+        .map((f) => Number(f.roic));
+      m.roic = roicsTri.length
+        ? roicsTri.reduce((a, b) => a + b, 0) / roicsTri.length
+        : fund[0].roic;
     }
 
     const desde = new Date(Date.now() - 30 * 86_400_000)
