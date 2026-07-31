@@ -45,7 +45,9 @@ MAPA = {
     "WEGE3": r"^WEG S",
     "INTB3": r"INTELBRAS",
     "TOTS3": r"^TOTVS",
-    "RENT3": r"^LOCALIZA",
+    # atenção: existe "LOCALIZA FLEET S.A." (subsidiária) nos arquivos da
+    # CVM — o padrão precisa ancorar na controladora listada
+    "RENT3": r"^LOCALIZA RENT A CAR",
     "LREN3": r"LOJAS RENNER",
     "MGLU3": r"MAGAZINE LUIZA|MAGAZ LUIZA",
     "RADL3": r"RAIA DROGASIL",
@@ -141,7 +143,17 @@ def ler_csv(z: zipfile.ZipFile, sufixo: str) -> pd.DataFrame | None:
     df = df[df["VERSAO"] == idx]
     NOMES_VISTOS.update(sem_acento(n) for n in df["DENOM_CIA"].unique())
     df["TICKER"] = df["DENOM_CIA"].map(ticker_de)
-    return df[df["TICKER"].notna()].copy()
+    df = df[df["TICKER"].notna()].copy()
+    # GUARDRAIL (caso Localiza Fleet, 31/07/2026): um ticker jamais pode
+    # agregar mais de uma companhia — se o padrão casar 2+ razões sociais,
+    # descarta o ticker nesta fonte e denuncia no relatório.
+    por_ticker = df.groupby("TICKER")["DENOM_CIA"].nunique()
+    conflitos = por_ticker[por_ticker > 1]
+    for tk in conflitos.index:
+        nomes = sorted(df.loc[df["TICKER"] == tk, "DENOM_CIA"].unique())
+        log(f"  !! CONFLITO de mapeamento em {tk}: {nomes} — ticker descartado neste arquivo")
+        df = df[df["TICKER"] != tk]
+    return df
 
 
 def valor(df, cds=None, ds_regex=None):
@@ -203,6 +215,11 @@ def extrair(dre, bpa, bpp, anual: bool, fonte: str, resultados: dict):
             roic = 0.66 * ebit / (pl + div_liq)
             if not anual:
                 roic *= 4  # anualização simples do trimestre
+
+        # período totalmente zerado (ex.: DFP consolidada da TIM vem vazia
+        # no arquivo da CVM) é ruído — não gravar
+        if not receita and not lucro and not pl:
+            continue
 
         chave = (ticker, fim, fonte)
         resultados[chave] = dict(
