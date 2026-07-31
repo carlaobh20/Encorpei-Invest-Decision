@@ -14,6 +14,7 @@ nada é inventado — conta ausente vira NULL e aparece no relatório.
 
 import io
 import re
+import time
 import unicodedata
 import zipfile
 from datetime import date
@@ -103,11 +104,19 @@ def ticker_de(denom: str, cache={}) -> str | None:
 
 def baixar_zip(url: str) -> zipfile.ZipFile | None:
     log(f"Baixando {url}")
-    r = requests.get(url, timeout=300)
-    if r.status_code != 200:
-        log(f"  !! HTTP {r.status_code} — pulando")
-        return None
-    return zipfile.ZipFile(io.BytesIO(r.content))
+    for tentativa in range(1, 4):
+        try:
+            r = requests.get(url, timeout=300)
+            if r.status_code != 200:
+                log(f"  !! HTTP {r.status_code} — pulando")
+                return None
+            return zipfile.ZipFile(io.BytesIO(r.content))
+        except requests.exceptions.RequestException as e:
+            log(f"  tentativa {tentativa}/3 falhou ({type(e).__name__}); "
+                f"aguardando 30s")
+            time.sleep(30)
+    log("  !! desistiu após 3 tentativas — pulando este arquivo")
+    return None
 
 
 def ler_csv(z: zipfile.ZipFile, sufixo: str) -> pd.DataFrame | None:
