@@ -11,7 +11,7 @@ Períodos extraídos: **237** · Empresas com dados: **40/40**
 - **BBAS3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **BBDC4**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **BBSE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **CPLE6**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
+- **CPLE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **CXSE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **CYRE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
 - **EGIE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
