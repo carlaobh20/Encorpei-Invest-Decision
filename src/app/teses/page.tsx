@@ -46,6 +46,16 @@ export default async function Teses() {
           O centro do sistema. Cada empresa é um veículo de uma tese — e a
           tese evolui sozinha quando os dados mudam.
         </p>
+        <p className="mt-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs leading-relaxed text-slate-400">
+          <span className="text-emerald-400">Válida</span> = os dados seguem
+          confirmando a tese ·{" "}
+          <span className="text-amber-400">Em revisão</span> = um alerta
+          disparou, estude antes de decidir ·{" "}
+          <span className="text-red-400">Quebrada</span> = a premissa central
+          caiu. <span className="text-slate-500">Convicção</span> é o quanto a
+          tese está bem sustentada pelos dados hoje (alta/média/baixa). Clique
+          em qualquer tese para ver os gatilhos explicados um a um.
+        </p>
 
         {erro && (
           <div className="mt-8 rounded-xl border border-amber-700 bg-amber-950/40 p-4 text-amber-300">
