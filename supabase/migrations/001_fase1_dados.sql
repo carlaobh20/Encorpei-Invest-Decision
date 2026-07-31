@@ -110,7 +110,7 @@ insert into public.empresas (ticker, nome, setor) values
   ('TAEE11', 'Taesa',              'Energia Elétrica'),
   ('EGIE3',  'Engie Brasil',       'Energia Elétrica'),
   ('CPLE6',  'Copel',              'Energia Elétrica'),
-  ('ELET3',  'Eletrobras',         'Energia Elétrica'),
+  ('AXIA3',  'Axia Energia (ex-Eletrobras)', 'Energia Elétrica'),
   ('SBSP3',  'Sabesp',             'Saneamento'),
   ('UGPA3',  'Ultrapar',           'Distribuição de Combustíveis'),
   ('VBBR3',  'Vibra',              'Distribuição de Combustíveis'),

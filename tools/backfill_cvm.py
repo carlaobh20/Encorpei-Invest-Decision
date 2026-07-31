@@ -52,7 +52,7 @@ MAPA = {
     "TAEE11": r"TRANSMISSORA ALIAN",
     "EGIE3": r"^ENGIE BRASIL",
     "CPLE6": r"PARANAENSE DE ENERGIA",
-    "ELET3": r"CENTRAIS ELETR|CENTRAIS ELET BRAS|ELETROBRAS",
+    "AXIA3": r"AXIA ENERGIA|CENTRAIS ELETR|CENTRAIS ELET BRAS|ELETROBRAS",
     "SBSP3": r"SANEAMENTO BASICO",
     "UGPA3": r"^ULTRAPAR",
     "VBBR3": r"VIBRA ENERGIA",
@@ -237,7 +237,12 @@ def main():
         )
     sql = (
         "-- ENCORPEI INVEST — Migração 002: fundamentos (dados abertos CVM)\n"
-        f"-- Gerado automaticamente pelo GitHub Actions em {date.today()}\n"
+        f"-- Gerado automaticamente pelo GitHub Actions em {date.today()}\n\n"
+        "-- Correções de universo (idempotentes):\n"
+        "insert into public.empresas (ticker, nome, setor) values\n"
+        "  ('AXIA3', 'Axia Energia (ex-Eletrobras)', 'Energia Elétrica')\n"
+        "on conflict (ticker) do nothing;\n"
+        "update public.empresas set ativo = false where ticker = 'ELET3';\n\n"
         "insert into public.fundamentos\n"
         "  (ticker, competencia, receita_liquida, lucro_liquido, margem_bruta,\n"
         "   margem_liquida, roic, divida_liquida, caixa, patrimonio_liquido, fonte)\n"
