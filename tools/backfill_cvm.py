@@ -55,7 +55,9 @@ MAPA = {
     "TAEE11": r"TRANSMISSORA ALIAN",
     "EGIE3": r"^ENGIE BRASIL",
     "CPLE3": r"PARANAENSE DE ENERGIA",  # Copel migrou p/ Novo Mercado (CPLE6 extinto em nov/2025)
-    "AXIA3": r"AXIA ENERGIA|CENTRAIS ELETR|CENTRAIS ELET BRAS|ELETROBRAS",
+    # holding apenas — "AXIA ENERGIA NORTE/NORDESTE/SUL S.A." são
+    # subsidiárias (ex-Eletronorte/Chesf/Eletrosul) e têm arquivos próprios
+    "AXIA3": r"^AXIA ENERGIA S\.?A|^CENTRAIS ELET BRAS|^ELETROBRAS S",
     "SBSP3": r"SANEAMENTO BASICO",
     "UGPA3": r"^ULTRAPAR",
     "VBBR3": r"VIBRA ENERGIA",
