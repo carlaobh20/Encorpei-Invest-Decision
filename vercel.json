@@ -3,6 +3,10 @@
     {
       "path": "/api/coleta/precos",
       "schedule": "0 23 * * 1-5"
+    },
+    {
+      "path": "/api/teses/avaliar",
+      "schedule": "30 23 * * 1-5"
     }
   ]
 }

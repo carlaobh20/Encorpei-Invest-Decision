@@ -31,12 +31,20 @@ export default function Home() {
           Deploy automático via GitHub → Vercel · Se você está vendo esta
           página, o gate da Fase 0 foi cumprido.
         </p>
-        <a
-          href="/auditoria"
-          className="inline-block rounded-lg border border-emerald-700 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-950"
-        >
-          Auditoria de dados (Fase 1) →
-        </a>
+        <div className="flex justify-center gap-3">
+          <a
+            href="/teses"
+            className="inline-block rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+          >
+            Teses Vivas (Fase 2) →
+          </a>
+          <a
+            href="/auditoria"
+            className="inline-block rounded-lg border border-emerald-700 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-950"
+          >
+            Auditoria de dados →
+          </a>
+        </div>
       </div>
     </main>
   );
