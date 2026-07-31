@@ -6,6 +6,7 @@ type LinhaAuditoria = {
   ticker: string;
   nome: string;
   setor: string | null;
+  ri_url: string | null;
   ultimo_preco: string | null;
   dias_coletados: number;
   ultimo_trimestre: string | null;
@@ -77,7 +78,19 @@ export default async function Auditoria() {
                   }`}
                 >
                   <td className="py-2 pr-4 font-mono">{l.ticker}</td>
-                  <td className="py-2 pr-4">{l.nome}</td>
+                  <td className="py-2 pr-4">
+                    {l.nome}
+                    {l.ri_url && (
+                      <a
+                        href={l.ri_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-xs text-emerald-500 hover:underline"
+                      >
+                        RI ↗
+                      </a>
+                    )}
+                  </td>
                   <td className="py-2 pr-4 text-slate-400">{l.setor ?? "—"}</td>
                   <td className="py-2 pr-4">{fmt(l.ultimo_preco)}</td>
                   <td className="py-2 pr-4">{l.dias_coletados}</td>
