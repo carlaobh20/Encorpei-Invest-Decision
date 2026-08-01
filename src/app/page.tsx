@@ -125,6 +125,7 @@ export default async function Dashboard() {
           <nav className="flex items-center gap-2 text-xs">
             <Link href="/teses" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Teses</Link>
             <Link href="/ranking" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Ranking</Link>
+            <Link href="/diario" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Diário</Link>
             <Link href="/replay" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Replay</Link>
             <Link href="/auditoria" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Auditoria</Link>
           </nav>
