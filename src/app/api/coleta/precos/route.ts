@@ -25,11 +25,11 @@ function dataPregaoSaoPaulo(regularMarketTime?: string): string {
 }
 
 export async function GET(req: NextRequest) {
-  // --- autenticação do disparo ---
+  // --- autenticação do disparo (SÓ header; secret em URL vaza em logs
+  // e histórico do navegador — removido na revisão de segurança 01/08) ---
   const secret = process.env.CRON_SECRET;
   const header = req.headers.get("authorization");
-  const query = req.nextUrl.searchParams.get("secret");
-  if (!secret || (header !== `Bearer ${secret}` && query !== secret)) {
+  if (!secret || header !== `Bearer ${secret}`) {
     return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
   }
 

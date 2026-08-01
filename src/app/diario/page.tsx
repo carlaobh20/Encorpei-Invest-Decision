@@ -36,12 +36,19 @@ function fmtData(d: string) {
 
 async function registrarDecisao(formData: FormData) {
   "use server";
+  const { timingSafeEqual } = await import("node:crypto");
   const chave = String(formData.get("chave") ?? "");
   const ticker = String(formData.get("ticker") ?? "").toUpperCase();
   const decisao = String(formData.get("decisao") ?? "");
   const justificativa = String(formData.get("justificativa") ?? "").trim();
 
-  if (!chave || chave !== process.env.CRON_SECRET) return; // chave errada: ignora
+  // PIN próprio do diário (DIARIO_PIN); comparação em tempo constante.
+  // Fallback temporário para CRON_SECRET até o PIN ser criado na Vercel.
+  const pin = process.env.DIARIO_PIN ?? process.env.CRON_SECRET ?? "";
+  const a = Buffer.from(chave);
+  const b = Buffer.from(pin);
+  const ok = pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+  if (!ok) return; // chave errada: ignora em silêncio
   if (!ticker || !decisao || justificativa.length < 10) return;
 
   const admin = getSupabaseAdmin();
@@ -149,9 +156,9 @@ export default async function Diario() {
               Registrar (imutável)
             </button>
             <p className="text-[10px] leading-snug text-slate-600">
-              A chave é a mesma do sistema (CRON_SECRET). Com o login da Fase 4
-              ela deixa de ser necessária. O registro guarda automaticamente a
-              nota, o status da tese e o preço do momento.
+              Use o PIN do diário (definido na Vercel como DIARIO_PIN). Com o
+              login da Fase 4 ele deixa de ser necessário. O registro guarda
+              automaticamente a nota, o status da tese e o preço do momento.
             </p>
           </form>
         </section>
