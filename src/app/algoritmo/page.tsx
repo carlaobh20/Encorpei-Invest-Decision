@@ -73,6 +73,41 @@ export default async function Algoritmo() {
             <pre className="mt-2 overflow-x-auto rounded-xl bg-black/30 p-4 text-[11px] leading-relaxed text-slate-300">
 {JSON.stringify(v.regras, null, 2)}
             </pre>
+
+            {i === 0 && (
+              <>
+                <h3 className="mt-4 text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                  De onde vem cada dado
+                </h3>
+                <ul className="mt-2 space-y-1.5 text-[12px] leading-relaxed text-slate-400">
+                  <li>
+                    <span className="text-slate-200">Balanços e lucros:</span>{" "}
+                    dados abertos oficiais da CVM (ITR trimestral e DFP anual),
+                    baixados direto da fonte todo dia 15. Lucro = atribuído aos
+                    controladores (conta 3.11.01), padrão de mercado.
+                  </li>
+                  <li>
+                    <span className="text-slate-200">Valor de mercado:</span>{" "}
+                    preço de fechamento × número TOTAL de ações informado pela
+                    própria empresa à CVM (composição de capital) — não
+                    dependemos de sites de terceiros para isso. A brapi só é
+                    usada como reserva quando falta o número oficial.
+                  </li>
+                  <li>
+                    <span className="text-slate-200">Preços:</span> cotação de
+                    fechamento via brapi.dev, coletada todo dia útil às 20h,
+                    com a resposta bruta arquivada para auditoria.
+                  </li>
+                  <li>
+                    <span className="text-slate-200">ROIC:</span> calculado
+                    APÓS impostos (0,66 × EBIT ÷ capital investido), média dos
+                    últimos 4 trimestres. Sites como o Fundamentus usam EBIT
+                    cheio e mostram um número ~50% maior — a régua daqui é
+                    calibrada na nossa escala, não na deles.
+                  </li>
+                </ul>
+              </>
+            )}
           </section>
         ))}
         {versoes.length === 0 && <p className="text-slate-500">Nenhuma versão registrada.</p>}
