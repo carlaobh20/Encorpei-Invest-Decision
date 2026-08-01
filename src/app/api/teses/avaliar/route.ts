@@ -217,10 +217,44 @@ export async function GET(req: NextRequest) {
     if (!errScore) scores_gravados++;
   }
 
+  // ---------- ALERTA POR E-MAIL (ativa quando RESEND_API_KEY existir) ----------
+  let alerta_email = "desativado (sem RESEND_API_KEY/ALERT_EMAIL)";
+  const resendKey = process.env.RESEND_API_KEY;
+  const alertEmail = process.env.ALERT_EMAIL;
+  if (disparos.length > 0 && resendKey && alertEmail) {
+    try {
+      const itens = (disparos as { ticker: string; gatilho: string; valor_atual: number }[])
+        .map((d) => `<li><b>${d.ticker}</b>: ${d.gatilho} (valor atual: ${d.valor_atual})</li>`)
+        .join("");
+      const resp = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "Encorpei Invest <onboarding@resend.dev>",
+          to: [alertEmail],
+          subject: `Encorpei: ${disparos.length} gatilho(s) dispararam hoje`,
+          html:
+            `<p>O motor diário detectou mudanças que pedem sua atenção:</p><ul>${itens}</ul>` +
+            `<p><a href="https://encorpei-invest-decision.vercel.app/replay">Ver a linha do tempo completa →</a></p>` +
+            `<p style="color:#888;font-size:12px">Sistema pessoal de apoio à decisão. Não é recomendação de investimento.</p>`,
+        }),
+      });
+      alerta_email = resp.ok ? "enviado" : `falhou (HTTP ${resp.status})`;
+    } catch (e) {
+      alerta_email = `falhou (${String(e)})`;
+    }
+  } else if (disparos.length === 0) {
+    alerta_email = "sem disparos, sem e-mail";
+  }
+
   return NextResponse.json({
     teses_avaliadas: teses?.length ?? 0,
     disparos,
     scores_gravados,
+    alerta_email,
     executado_em: new Date().toISOString(),
   });
 }
