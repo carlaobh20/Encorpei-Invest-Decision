@@ -9,7 +9,7 @@ import { calcularScore } from "@/lib/score";
  * Fundação: quem decide são REGRAS versionadas no banco; cada disparo
  * gera um evento imutável com os dados exatos que o causaram.
  *
- * Disparo manual: /api/teses/avaliar?secret=<CRON_SECRET>
+ * Disparo manual: GET com header Authorization: Bearer <CRON_SECRET>
  */
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -174,13 +174,36 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const { data: precoMc } = await supabase
-      .from("precos_diarios")
-      .select("market_cap")
-      .eq("ticker", tese.ticker)
-      .not("market_cap", "is", null)
-      .order("data", { ascending: false })
-      .limit(1);
+    // Valor de mercado: fonte OFICIAL primeiro (nº de ações da CVM ×
+    // fechamento). A auditoria de 01/08/2026 pegou a brapi informando
+    // market_cap errado para MULT3 (metade do real) e EGIE3 (~25% a mais);
+    // brapi agora é apenas fallback quando não temos o nº de ações.
+    const [{ data: acoes }, { data: precoRec }, { data: precoMc }] =
+      await Promise.all([
+        supabase
+          .from("acoes_totais")
+          .select("qtd_acoes")
+          .eq("ticker", tese.ticker)
+          .limit(1),
+        supabase
+          .from("precos_diarios")
+          .select("fechamento")
+          .eq("ticker", tese.ticker)
+          .order("data", { ascending: false })
+          .limit(1),
+        supabase
+          .from("precos_diarios")
+          .select("market_cap")
+          .eq("ticker", tese.ticker)
+          .not("market_cap", "is", null)
+          .order("data", { ascending: false })
+          .limit(1),
+      ]);
+    const qtdAcoes = acoes?.[0]?.qtd_acoes ? Number(acoes[0].qtd_acoes) : null;
+    const fechRec = precoRec?.[0]?.fechamento
+      ? Number(precoRec[0].fechamento)
+      : null;
+    const mcOficial = qtdAcoes && fechRec ? qtdAcoes * fechRec : null;
 
     const margensTri = funds
       .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)
@@ -198,7 +221,9 @@ export async function GET(req: NextRequest) {
           ? Number(maisRecente.patrimonio_liquido)
           : null,
       lucro_ltm,
-      market_cap: precoMc?.[0]?.market_cap ? Number(precoMc[0].market_cap) : null,
+      market_cap:
+        mcOficial ??
+        (precoMc?.[0]?.market_cap ? Number(precoMc[0].market_cap) : null),
       margens_trimestrais: margensTri,
     });
 
