@@ -8,6 +8,7 @@ const LINKS: [string, string][] = [
   ["/", "Dashboard"],
   ["/teses", "Teses"],
   ["/ranking", "Ranking"],
+  ["/comparar", "Comparar"],
   ["/diario", "Diário"],
   ["/replay", "Replay"],
   ["/auditoria", "Auditoria"],

@@ -6,6 +6,7 @@ import {
   regraEmPortugues,
   condicaoAtendida,
 } from "@/lib/metricas";
+import { GraficoBarras, rotuloTrimestre } from "@/components/GraficoBarras";
 
 export const dynamic = "force-dynamic";
 
@@ -109,10 +110,10 @@ export default async function TesePage({
     await Promise.all([
       supabase
         .from("fundamentos")
-        .select("competencia, fonte, roic, margem_liquida, divida_liquida")
+        .select("competencia, fonte, roic, margem_liquida, divida_liquida, receita_liquida")
         .eq("ticker", tese.ticker)
         .order("competencia", { ascending: false })
-        .limit(6),
+        .limit(8),
       supabase
         .from("precos_diarios")
         .select("data, fechamento")
@@ -297,6 +298,29 @@ export default async function TesePage({
                 })}
               </div>
             </section>
+
+            {(() => {
+              const tri = (fund ?? [])
+                .filter((f) => f.fonte === "cvm_itr")
+                .slice(0, 6)
+                .reverse();
+              if (tri.length < 2) return null;
+              const pontos = (campo: "receita_liquida" | "margem_liquida" | "roic") =>
+                tri.map((f) => ({
+                  rotulo: rotuloTrimestre(String(f.competencia)),
+                  valor: f[campo] !== null ? Number(f[campo]) : null,
+                }));
+              return (
+                <section className="grid grid-cols-3 gap-2">
+                  <GraficoBarras titulo="Receita / tri" formato="reais" altura={80}
+                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("receita_liquida") }]} />
+                  <GraficoBarras titulo="Margem líquida" formato="percentual" altura={80}
+                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("margem_liquida") }]} />
+                  <GraficoBarras titulo="ROIC (pós-imposto)" formato="percentual" altura={80}
+                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("roic") }]} />
+                </section>
+              );
+            })()}
 
             <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/5 bg-white/[0.03] p-4">
               <div className="flex items-baseline justify-between">
