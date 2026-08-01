@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { Sparkline } from "@/components/Sparkline";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function Dashboard() {
     );
   }
 
-  const desde7d = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+  const desde45d = new Date(Date.now() - 45 * 86_400_000).toISOString().slice(0, 10);
   const desde48h = new Date(Date.now() - 48 * 3_600_000).toISOString();
 
   const [{ data: scoresRaw }, { data: tesesRaw }, { data: eventosRaw }, { data: precosRaw }] =
@@ -75,7 +76,7 @@ export default async function Dashboard() {
       supabase
         .from("precos_diarios")
         .select("ticker, data, fechamento")
-        .gte("data", desde7d)
+        .gte("data", desde45d)
         .order("data", { ascending: false }),
     ]);
 
@@ -94,11 +95,11 @@ export default async function Dashboard() {
     ((tesesRaw as TeseRow[]) ?? []).map((t) => [t.ticker, t.status])
   );
 
-  // preço mais recente + variação vs pregão anterior
+  // histórico por ticker (desc): [0] = mais recente; série completa p/ sparkline
   const precosPorTicker = new Map<string, PrecoRow[]>();
   for (const p of (precosRaw as PrecoRow[]) ?? []) {
     const arr = precosPorTicker.get(p.ticker) ?? [];
-    if (arr.length < 2 && !arr.find((x) => x.data === p.data)) arr.push(p);
+    if (!arr.find((x) => x.data === p.data)) arr.push(p);
     precosPorTicker.set(p.ticker, arr);
   }
 
@@ -201,6 +202,7 @@ export default async function Dashboard() {
                     <th className="py-1.5 pr-2">Tese</th>
                     <th className="py-1.5 pr-2 text-right">Preço</th>
                     <th className="py-1.5 pr-2 text-right">Dia</th>
+                    <th className="py-1.5 pr-2 text-right">30d</th>
                     <th className="py-1.5 text-right">Nota</th>
                   </tr>
                 </thead>
@@ -240,6 +242,11 @@ export default async function Dashboard() {
                             ? "—"
                             : `${varDia >= 0 ? "+" : ""}${(varDia * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
                         </td>
+                        <td className="py-2 pr-2 text-right">
+                          <Sparkline
+                            valores={[...ps].reverse().map((p) => Number(p.fechamento))}
+                          />
+                        </td>
                         <td className={`py-2 text-right text-base font-bold ${corNota(s.score_final)}`}>
                           {s.score_final}
                         </td>
@@ -248,7 +255,7 @@ export default async function Dashboard() {
                   })}
                   {ranking.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-6 text-slate-500">
+                      <td colSpan={6} className="py-6 text-slate-500">
                         Sem notas ainda — rode a avaliação diária.
                       </td>
                     </tr>
