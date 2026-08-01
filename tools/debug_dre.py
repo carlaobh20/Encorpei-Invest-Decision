@@ -149,7 +149,8 @@ z_itr = baixar(f"{BASE}/ITR/DADOS/itr_cia_aberta_2026.zip")
 csv_itr = achar_composicao(z_itr, "itr_cia_aberta_2026.zip")
 if csv_itr:
     linhas = extrair(z_itr, csv_itr, "ITR 2026")
-    gerar_seed(linhas)
+    # seed é gerado APENAS pelo backfill oficial (tools/backfill_cvm.py),
+    # que normaliza a escala unidades/milhares — não gerar aqui.
 else:
     saida.append("\n**ITR 2026 não tem arquivo composicao_capital — "
                  "ver lista de arquivos acima para achar alternativa.**")

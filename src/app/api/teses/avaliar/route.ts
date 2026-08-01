@@ -203,7 +203,12 @@ export async function GET(req: NextRequest) {
     const fechRec = precoRec?.[0]?.fechamento
       ? Number(precoRec[0].fechamento)
       : null;
-    const mcOficial = qtdAcoes && fechRec ? qtdAcoes * fechRec : null;
+    // Guardrail: tickers "11" são units (pacotes de várias ações — ex.:
+    // KLBN11 = 5 papéis), então preço da unit × total de ações NÃO é o
+    // valor de mercado. Para elas, só o fallback da brapi serve.
+    const ehUnit = tese.ticker.endsWith("11");
+    const mcOficial =
+      !ehUnit && qtdAcoes && fechRec ? qtdAcoes * fechRec : null;
 
     const margensTri = funds
       .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)

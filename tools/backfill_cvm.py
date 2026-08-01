@@ -234,13 +234,111 @@ def sql_num(x):
     return "null" if x is None else f"{x:.4f}" if abs(x) < 1000 else f"{x:.0f}"
 
 
+# ---------------------------------------------------------------------------
+# COMPOSIÇÃO DE CAPITAL (nº total de ações) — fonte oficial para o valor de
+# mercado usado no Valuation. Motivo (auditoria de 01/08/2026): a brapi
+# informou market_cap errado para MULT3 (metade do real) e EGIE3 (~25% a
+# mais). O arquivo *composicao_capital*.csv da CVM traz o número oficial.
+# ---------------------------------------------------------------------------
+
+def extrair_composicao(z: zipfile.ZipFile, acoes: dict):
+    nomes = [n for n in z.namelist() if "composicao_capital" in n.lower()]
+    if not nomes:
+        return
+    df = pd.read_csv(z.open(nomes[0]), sep=";", encoding="latin-1", dtype=str)
+    df["TICKER"] = df["DENOM_CIA"].map(ticker_de)
+    df = df[df["TICKER"].notna()].copy()
+    # guardrail: 1 ticker = 1 razão social (mesma regra dos fundamentos)
+    por = df.groupby("TICKER")["DENOM_CIA"].nunique()
+    for tk in por[por > 1].index:
+        log(f"  !! composicao_capital: conflito em {tk} — descartado")
+    df = df[~df["TICKER"].isin(por[por > 1].index)]
+    col = next((c for c in df.columns
+                if "QT_ACAO_TOTAL" in c.upper() and "TESOUR" not in c.upper()),
+               None)
+    if col is None:
+        log("  !! composicao_capital sem coluna de total de ações")
+        return
+    df["QT"] = pd.to_numeric(df[col], errors="coerce")
+    df = df[df["QT"] > 0]
+    df["VERSAO_N"] = pd.to_numeric(df["VERSAO"], errors="coerce")
+    df = df.sort_values(["TICKER", "DT_REFER", "VERSAO_N"])
+    for _, r in df.groupby("TICKER").tail(1).iterrows():
+        atual = acoes.get(r["TICKER"])
+        if atual is None or str(r["DT_REFER"]) > atual["ref"]:
+            acoes[r["TICKER"]] = {"qtd": float(r["QT"]), "ref": str(r["DT_REFER"])}
+
+
+def gerar_seed_acoes(acoes: dict, resultados: dict, rel_notas: list):
+    """Gera 008_seed_acoes.sql normalizando a escala.
+
+    Armadilha da CVM: cada companhia escolhe informar o nº de ações em
+    UNIDADES ou em MILHARES (ex.: Engie informa 1.142.298.836 unidades;
+    Ambev informa 15.763.665 = milhares). Heurística verificável: o lucro
+    por ação implícito. Nenhuma ação brasileira lucra centenas de reais por
+    papel — se |lucro anual| ÷ qtd > R$ 100, o número está em milhares.
+    """
+    if not acoes:
+        return
+    linhas = []
+    for ticker in sorted(acoes):
+        qtd, ref = acoes[ticker]["qtd"], acoes[ticker]["ref"]
+        lucros = sorted(
+            (fim, m["lucro"]) for (t, fim, fonte), m in resultados.items()
+            if t == ticker and fonte == "cvm_dfp" and m["lucro"]
+        )
+        lucro_ref = lucros[-1][1] if lucros else None
+        if lucro_ref is not None and abs(lucro_ref) / qtd > 100:
+            qtd *= 1000
+            rel_notas.append(
+                f"- {ticker}: composição informada em MILHARES → ×1000 "
+                f"(lucro/ação normalizado: R$ {abs(lucro_ref)/qtd:.2f})")
+        elif lucro_ref is None:
+            rel_notas.append(
+                f"- {ticker}: sem lucro anual para validar a escala do nº de "
+                f"ações — valor bruto mantido ({qtd:.0f}), conferir")
+        linhas.append(f"  ('{ticker}', {qtd:.0f}, '{ref}')")
+
+    corpo = ",\n".join(linhas)
+    sql = f"""-- ENCORPEI INVEST — Migração 008: nº total de ações (fonte OFICIAL:
+-- CVM, composicao_capital do ITR/DFP). Usado pelo motor para calcular o
+-- valor de mercado (fechamento × qtd_acoes); brapi é apenas fallback.
+-- Escala normalizada por lucro/ação (empresas informam ora em unidades,
+-- ora em milhares). Gerado automaticamente pelo GitHub Actions em {date.today()}.
+
+create table if not exists acoes_totais (
+  ticker text primary key references empresas(ticker),
+  qtd_acoes numeric not null check (qtd_acoes > 0),
+  data_referencia date not null,
+  fonte text not null default 'cvm_composicao_capital',
+  atualizado_em timestamptz not null default now()
+);
+alter table acoes_totais enable row level security;
+drop policy if exists "leitura publica acoes" on acoes_totais;
+create policy "leitura publica acoes" on acoes_totais for select using (true);
+
+insert into acoes_totais (ticker, qtd_acoes, data_referencia) values
+{corpo}
+on conflict (ticker) do update
+  set qtd_acoes = excluded.qtd_acoes,
+      data_referencia = excluded.data_referencia,
+      fonte = 'cvm_composicao_capital',
+      atualizado_em = now();
+"""
+    with open("supabase/migrations/008_seed_acoes.sql", "w") as f:
+        f.write(sql)
+    log(f"acoes_totais: seed gerado com {len(linhas)} tickers")
+
+
 def main():
     resultados: dict = {}
+    acoes: dict = {}
 
     for ano in ANOS_DFP:
         z = baixar_zip(f"{BASE}/DFP/DADOS/dfp_cia_aberta_{ano}.zip")
         if not z:
             continue
+        extrair_composicao(z, acoes)
         dre = ler_csv(z, f"DRE_con_{ano}.csv")
         bpa = ler_csv(z, f"BPA_con_{ano}.csv")
         bpp = ler_csv(z, f"BPP_con_{ano}.csv")
@@ -253,6 +351,7 @@ def main():
         z = baixar_zip(f"{BASE}/ITR/DADOS/itr_cia_aberta_{ano}.zip")
         if not z:
             continue
+        extrair_composicao(z, acoes)
         dre = ler_csv(z, f"DRE_con_{ano}.csv")
         bpa = ler_csv(z, f"BPA_con_{ano}.csv")
         bpp = ler_csv(z, f"BPP_con_{ano}.csv")
@@ -296,6 +395,10 @@ def main():
     with open("supabase/migrations/002_seed_fundamentos.sql", "w") as f:
         f.write(sql)
 
+    # ---------- nº de ações (valuation) ----------
+    rel_notas_acoes: list = []
+    gerar_seed_acoes(acoes, resultados, rel_notas_acoes)
+
     # ---------- relatório ----------
     por_ticker = {}
     for (ticker, fim, fonte) in resultados:
@@ -313,6 +416,9 @@ def main():
             dica = re.sub(r"[^A-Z ]", "", MAPA[t]).strip().split(" ")[0][:6]
             parecidos = sorted(n for n in NOMES_VISTOS if dica and dica in n)[:8]
             rel.append(f"- {t} (buscando '{dica}'): {parecidos or 'nenhum'}")
+    if rel_notas_acoes:
+        rel.append("\n## Composição de capital — ajustes de escala\n")
+        rel += rel_notas_acoes
     rel.append("\n## Períodos por empresa\n")
     for t in sorted(por_ticker):
         rel.append(f"- **{t}**: {len(por_ticker[t])} períodos — "
