@@ -42,13 +42,19 @@ async function registrarDecisao(formData: FormData) {
   const decisao = String(formData.get("decisao") ?? "");
   const justificativa = String(formData.get("justificativa") ?? "").trim();
 
-  // PIN próprio do diário (DIARIO_PIN); comparação em tempo constante.
-  // Fallback temporário para CRON_SECRET até o PIN ser criado na Vercel.
-  const pin = process.env.DIARIO_PIN ?? process.env.CRON_SECRET ?? "";
-  const a = Buffer.from(chave);
-  const b = Buffer.from(pin);
-  const ok = pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
-  if (!ok) return; // chave errada: ignora em silêncio
+  // Com login ativo e usuário autenticado, o PIN é dispensado.
+  const { usuarioLogado } = await import("@/lib/supabase-auth");
+  const user = await usuarioLogado();
+
+  if (!user) {
+    // PIN próprio do diário (DIARIO_PIN); comparação em tempo constante.
+    // Fallback temporário para CRON_SECRET até o PIN ser criado na Vercel.
+    const pin = process.env.DIARIO_PIN ?? process.env.CRON_SECRET ?? "";
+    const a = Buffer.from(chave);
+    const b = Buffer.from(pin);
+    const ok = pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
+    if (!ok) return; // chave errada: ignora em silêncio
+  }
   if (!ticker || !decisao || justificativa.length < 10) return;
 
   const admin = getSupabaseAdmin();
@@ -67,6 +73,7 @@ async function registrarDecisao(formData: FormData) {
     ticker,
     decisao,
     justificativa,
+    user_id: user?.id ?? null,
     contexto: {
       score: sc?.[0]?.score_final ?? null,
       status_tese: ts?.[0]?.status ?? null,

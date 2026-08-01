@@ -51,6 +51,14 @@ export function Shell({
                 {rotulo}
               </Link>
             ))}
+            {process.env.NEXT_PUBLIC_AUTH_ATIVO === "true" && (
+              <Link
+                href="/logout"
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-500 hover:border-red-500/40 hover:text-red-300"
+              >
+                Sair
+              </Link>
+            )}
           </nav>
         </header>
         <div className="flex min-h-0 flex-1 flex-col gap-3">{children}</div>
