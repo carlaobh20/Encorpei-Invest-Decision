@@ -11,6 +11,7 @@ const LINKS: [string, string][] = [
   ["/comparar", "Comparar"],
   ["/diario", "Diário"],
   ["/replay", "Replay"],
+  ["/timemachine", "Time Machine"],
   ["/auditoria", "Auditoria"],
 ];
 
