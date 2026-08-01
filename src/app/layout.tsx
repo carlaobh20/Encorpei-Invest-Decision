@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Encorpei Invest",
+  title: {
+    default: "Encorpei Invest",
+    template: "%s · Encorpei Invest",
+  },
   description:
     "Sistema operacional de inteligência para investimentos. Teses vivas, decisões explicáveis.",
 };

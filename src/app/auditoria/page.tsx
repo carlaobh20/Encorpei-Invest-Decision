@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { Shell } from "@/components/Shell";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +22,8 @@ function fmt(d: string | null) {
 function atrasado(ultimoPreco: string | null): boolean {
   if (!ultimoPreco) return true;
   const dias =
-    (Date.now() - new Date(ultimoPreco + "T12:00:00-03:00").getTime()) /
-    86_400_000;
-  return dias > 4; // mais de 4 dias sem preço = atraso (cobre fins de semana)
+    (Date.now() - new Date(ultimoPreco + "T12:00:00-03:00").getTime()) / 86_400_000;
+  return dias > 4;
 }
 
 export default async function Auditoria() {
@@ -31,7 +31,7 @@ export default async function Auditoria() {
   let erro: string | null = null;
 
   if (!isSupabaseConfigured || !supabase) {
-    erro = "Supabase ainda não configurado (variáveis de ambiente ausentes).";
+    erro = "Supabase não configurado.";
   } else {
     const { data, error } = await supabase
       .from("auditoria_dados")
@@ -41,74 +41,98 @@ export default async function Auditoria() {
     else linhas = (data as LinhaAuditoria[]) ?? [];
   }
 
-  return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <div className="mx-auto max-w-4xl">
-        <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
-          Fase 1 · Pipeline de dados
-        </p>
-        <h1 className="mt-2 text-3xl font-bold">Auditoria de dados</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Última data coletada por empresa. Linha vermelha = dado atrasado.
-          Sem dado confiável aqui, nenhum score lá na frente vale nada.
-        </p>
+  const atrasadas = linhas.filter((l) => atrasado(l.ultimo_preco)).length;
 
-        {erro ? (
-          <div className="mt-8 rounded-xl border border-amber-700 bg-amber-950/40 p-4 text-amber-300">
-            {erro}
-          </div>
-        ) : (
-          <table className="mt-8 w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-800 text-left text-slate-500">
-                <th className="py-2 pr-4">Ticker</th>
-                <th className="py-2 pr-4">Empresa</th>
-                <th className="py-2 pr-4">Setor</th>
-                <th className="py-2 pr-4">Último preço</th>
-                <th className="py-2 pr-4">Dias coletados</th>
-                <th className="py-2">Último trimestre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {linhas.map((l) => (
-                <tr
-                  key={l.ticker}
-                  className={`border-b border-slate-900 ${
-                    atrasado(l.ultimo_preco) ? "text-red-400" : ""
-                  }`}
-                >
-                  <td className="py-2 pr-4 font-mono">{l.ticker}</td>
-                  <td className="py-2 pr-4">
-                    {l.nome}
+  return (
+    <Shell
+      ativo="/auditoria"
+      titulo="Auditoria de dados"
+      subtitulo="Última data coletada por empresa, direto da fonte oficial (CVM + bolsa). Sem dado confiável aqui, nenhuma nota lá na frente vale nada — por isso esta tela existe."
+    >
+      <div className="flex gap-3">
+        <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2">
+          <p className="text-lg font-bold text-slate-100">{linhas.length}</p>
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">empresas vigiadas</p>
+        </div>
+        <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2">
+          <p className={`text-lg font-bold ${atrasadas > 0 ? "text-red-400" : "text-emerald-300"}`}>
+            {atrasadas}
+          </p>
+          <p className="text-[10px] uppercase tracking-wider text-slate-500">com dado atrasado</p>
+        </div>
+      </div>
+
+      {erro && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-amber-300">
+          {erro}
+        </div>
+      )}
+
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/5 bg-white/[0.03] p-4 pr-2">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 z-10 bg-[#050b18]/95 backdrop-blur">
+            <tr className="text-left text-[10px] uppercase tracking-wider text-slate-600">
+              <th className="py-2 pr-3">Status</th>
+              <th className="py-2 pr-3">Empresa</th>
+              <th className="py-2 pr-3">Setor</th>
+              <th className="py-2 pr-3 text-right">Último preço</th>
+              <th className="py-2 pr-3 text-right">Pregões</th>
+              <th className="py-2 pr-3 text-right">Último trimestre</th>
+              <th className="py-2 text-right">RI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((l) => {
+              const atraso = atrasado(l.ultimo_preco);
+              return (
+                <tr key={l.ticker} className="border-t border-white/5 hover:bg-white/[0.03]">
+                  <td className="py-2 pr-3">
+                    <span
+                      className={`inline-block h-2 w-2 rounded-full ${
+                        atraso ? "bg-red-400" : "bg-emerald-400"
+                      }`}
+                      title={atraso ? "dado atrasado" : "em dia"}
+                    />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className="font-mono font-semibold">{l.ticker}</span>
+                    <span className="ml-2 text-slate-400">{l.nome}</span>
+                  </td>
+                  <td className="py-2 pr-3 text-slate-500">{l.setor ?? "—"}</td>
+                  <td className={`py-2 pr-3 text-right font-mono ${atraso ? "text-red-400" : "text-slate-300"}`}>
+                    {fmt(l.ultimo_preco)}
+                  </td>
+                  <td className="py-2 pr-3 text-right font-mono text-slate-400">
+                    {l.dias_coletados}
+                  </td>
+                  <td className="py-2 pr-3 text-right font-mono text-slate-300">
+                    {fmt(l.ultimo_trimestre)}
+                  </td>
+                  <td className="py-2 text-right">
                     {l.ri_url && (
                       <a
                         href={l.ri_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="ml-2 text-xs text-emerald-500 hover:underline"
+                        className="rounded-md border border-white/10 px-2 py-0.5 text-[11px] text-emerald-400/90 hover:border-emerald-500/40"
                       >
                         RI ↗
                       </a>
                     )}
                   </td>
-                  <td className="py-2 pr-4 text-slate-400">{l.setor ?? "—"}</td>
-                  <td className="py-2 pr-4">{fmt(l.ultimo_preco)}</td>
-                  <td className="py-2 pr-4">{l.dias_coletados}</td>
-                  <td className="py-2">{fmt(l.ultimo_trimestre)}</td>
                 </tr>
-              ))}
-              {linhas.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-6 text-slate-500">
-                    Nenhuma empresa cadastrada ainda — rode a migração 001 no
-                    Supabase.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
+              );
+            })}
+            {linhas.length === 0 && !erro && (
+              <tr>
+                <td colSpan={7} className="py-6 text-slate-500">
+                  Nenhuma empresa cadastrada ainda.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    </main>
+    </Shell>
   );
 }

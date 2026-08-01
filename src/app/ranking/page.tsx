@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { Shell } from "@/components/Shell";
 
 export const dynamic = "force-dynamic";
 
@@ -16,22 +17,28 @@ type Score = {
 
 function corNota(n: number | null): string {
   if (n === null) return "text-slate-600";
-  if (n >= 80) return "text-emerald-400";
-  if (n >= 60) return "text-emerald-600";
+  if (n >= 80) return "text-emerald-300";
+  if (n >= 60) return "text-emerald-500";
   if (n >= 40) return "text-amber-400";
   return "text-red-400";
+}
+
+function corBarra(n: number): string {
+  if (n >= 80) return "bg-emerald-400";
+  if (n >= 60) return "bg-emerald-600";
+  if (n >= 40) return "bg-amber-500";
+  return "bg-red-500";
 }
 
 export default async function Ranking() {
   if (!isSupabaseConfigured || !supabase) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 p-10">
-        Supabase não configurado.
-      </main>
+      <Shell ativo="/ranking" titulo="Ranking">
+        <p className="text-slate-400">Supabase não configurado.</p>
+      </Shell>
     );
   }
 
-  // score mais recente de cada ticker
   const { data } = await supabase
     .from("scores")
     .select("ticker, data, qualidade, valuation, risco, score_final, confianca, empresas(nome)")
@@ -51,78 +58,69 @@ export default async function Ranking() {
     : null;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 px-6 py-10">
-      <div className="mx-auto max-w-3xl">
-        <p className="text-xs uppercase tracking-[0.3em] text-emerald-400">
-          Fase 3 · Decision Engine
-        </p>
-        <h1 className="mt-2 text-3xl font-bold">Ranking do universo</h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Nota de 0 a 100 calculada por regras fixas e versionadas — nunca por
-          opinião, nunca por IA. Clique na empresa para ver a tese e cada
-          régua que compôs a nota.
-        </p>
-        <p className="mt-3 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-xs leading-relaxed text-slate-400">
-          <span className="text-slate-300">Qualidade</span> = o negócio é bom?
-          (retorno, margem, balanço) ·{" "}
-          <span className="text-slate-300">Valuation</span> = o preço está
-          razoável? (lucro ÷ valor de mercado) ·{" "}
-          <span className="text-slate-300">Risco</span> = quão sólida e
-          previsível é? (dívida, estabilidade).{" "}
-          <span className="text-slate-500">
-            Confiança da nota: alta = 3 componentes calculados; média = 2
-            (valuation entra quando o valor de mercado começar a ser coletado).
-          </span>
-          {dataRef && <> Notas de {dataRef}.</>}
-        </p>
-
-        <table className="mt-6 w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 text-left text-slate-500">
+    <Shell
+      ativo="/ranking"
+      titulo="Ranking do universo"
+      subtitulo={`Nota de 0 a 100 por regras fixas e versionadas — nunca por opinião, nunca por IA. Qualidade = o negócio é bom? · Valuation = o preço está razoável? · Risco = quão sólida é? ${dataRef ? `Notas de ${dataRef}.` : ""}`}
+    >
+      <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-white/5 bg-white/[0.03] p-4 pr-2">
+        <table className="w-full text-[13px]">
+          <thead className="sticky top-0 z-10 bg-[#050b18]/95 backdrop-blur">
+            <tr className="text-left text-[10px] uppercase tracking-wider text-slate-600">
               <th className="py-2 pr-3">#</th>
               <th className="py-2 pr-3">Empresa</th>
               <th className="py-2 pr-3 text-right">Qualidade</th>
               <th className="py-2 pr-3 text-right">Valuation</th>
               <th className="py-2 pr-3 text-right">Risco</th>
-              <th className="py-2 pr-3 text-right">Nota final</th>
+              <th className="w-[26%] py-2 pr-3">Nota final</th>
               <th className="py-2 text-right">Confiança</th>
             </tr>
           </thead>
           <tbody>
             {scores.map((s, i) => (
-              <tr key={s.ticker} className="border-b border-slate-900 hover:bg-slate-900/50">
-                <td className="py-2 pr-3 text-slate-600">{i + 1}</td>
-                <td className="py-2 pr-3">
+              <tr key={s.ticker} className="border-t border-white/5 hover:bg-white/[0.03]">
+                <td className="py-2.5 pr-3 text-slate-600">{i + 1}</td>
+                <td className="py-2.5 pr-3">
                   <Link href={`/tese/${s.ticker}`} className="hover:underline">
                     <span className="font-mono font-semibold">{s.ticker}</span>
                     <span className="ml-2 text-slate-400">{s.empresas?.nome}</span>
                   </Link>
                 </td>
-                <td className={`py-2 pr-3 text-right ${corNota(s.qualidade)}`}>
+                <td className={`py-2.5 pr-3 text-right font-mono ${corNota(s.qualidade)}`}>
                   {s.qualidade ?? "—"}
                 </td>
-                <td className={`py-2 pr-3 text-right ${corNota(s.valuation)}`}>
+                <td className={`py-2.5 pr-3 text-right font-mono ${corNota(s.valuation)}`}>
                   {s.valuation ?? "—"}
                 </td>
-                <td className={`py-2 pr-3 text-right ${corNota(s.risco)}`}>
+                <td className={`py-2.5 pr-3 text-right font-mono ${corNota(s.risco)}`}>
                   {s.risco ?? "—"}
                 </td>
-                <td className={`py-2 pr-3 text-right text-lg font-bold ${corNota(s.score_final)}`}>
-                  {s.score_final}
+                <td className="py-2.5 pr-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/5">
+                      <div
+                        className={`h-full rounded-full ${corBarra(s.score_final)}`}
+                        style={{ width: `${s.score_final}%` }}
+                      />
+                    </div>
+                    <span className={`w-8 text-right text-base font-bold ${corNota(s.score_final)}`}>
+                      {s.score_final}
+                    </span>
+                  </div>
                 </td>
-                <td className="py-2 text-right text-xs text-slate-500">{s.confianca}</td>
+                <td className="py-2.5 text-right text-[11px] text-slate-500">{s.confianca}</td>
               </tr>
             ))}
             {scores.length === 0 && (
               <tr>
                 <td colSpan={7} className="py-6 text-slate-500">
-                  Nenhum score ainda — rode a avaliação diária.
+                  Sem notas ainda — rode a avaliação diária.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </main>
+    </Shell>
   );
 }
