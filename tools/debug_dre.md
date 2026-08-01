@@ -1,348 +1,501 @@
-# Debug DRE — Localiza, Totvs e TIM
+# Debug — composição de capital (nº de ações) na CVM
 
 
-## ITR 2026 (1T26) — RENT3 (DENOM: LOCALIZA FLEET S.A.)
+## Arquivos dentro de itr_cia_aberta_2026.zip
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2026-01-01 → 2026-03-31: 62 linhas
+- itr_cia_aberta_2026.csv
+- itr_cia_aberta_BPA_con_2026.csv
+- itr_cia_aberta_BPA_ind_2026.csv
+- itr_cia_aberta_BPP_con_2026.csv
+- itr_cia_aberta_BPP_ind_2026.csv
+- itr_cia_aberta_DFC_MD_con_2026.csv
+- itr_cia_aberta_DFC_MD_ind_2026.csv
+- itr_cia_aberta_DFC_MI_con_2026.csv
+- itr_cia_aberta_DFC_MI_ind_2026.csv
+- itr_cia_aberta_DMPL_con_2026.csv
+- itr_cia_aberta_DMPL_ind_2026.csv
+- itr_cia_aberta_DRA_con_2026.csv
+- itr_cia_aberta_DRA_ind_2026.csv
+- itr_cia_aberta_DRE_con_2026.csv
+- itr_cia_aberta_DRE_ind_2026.csv
+- itr_cia_aberta_DVA_con_2026.csv
+- itr_cia_aberta_DVA_ind_2026.csv
+- itr_cia_aberta_composicao_capital_2026.csv
+- itr_cia_aberta_parecer_2026.csv
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 2966909.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -2017798.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.03 | Resultado Bruto | 949111.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04 | Despesas/Receitas Operacionais | 119140.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.01 | Despesas com Vendas | -128062.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.02 | Despesas Gerais e Administrativas | -64500.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.04 | Outras Receitas Operacionais | 311702.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.05 | Outras Despesas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 1068251.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06 | Resultado Financeiro | -319166.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.01 | Receitas Financeiras | 107601.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.02 | Despesas Financeiras | -426767.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 749085.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -248311.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.01 | Corrente | -116706.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.02 | Diferido | -131605.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.09 | Resultado Líquido das Operações Continuadas | 500774.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 500774.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 501429.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.02 | Atribuído a Sócios Não Controladores | -655.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 12284362.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -8949132.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.03 | Resultado Bruto | 3335230.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04 | Despesas/Receitas Operacionais | -602296.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.01 | Despesas com Vendas | -646703.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.02 | Despesas Gerais e Administrativas | -238011.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.04 | Outras Receitas Operacionais | 282418.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.05 | Outras Despesas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 2732934.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06 | Resultado Financeiro | -1138604.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.01 | Receitas Financeiras | 447868.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.02 | Despesas Financeiras | -1586472.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 1594330.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -372434.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.01 | Corrente | -201496.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.02 | Diferido | -170938.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.09 | Resultado Líquido das Operações Continuadas | 1221896.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 1221896.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 1221896.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.02 | Atribuído a Sócios Não Controladores | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+## Colunas de itr_cia_aberta_composicao_capital_2026.csv (ITR 2026)
 
-**DUPLICATAS detectadas (28):**
-- 3.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.03 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.03 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.04 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.05 em 2026-01-01→2026-03-31: 2 linhas
-- 3.04.06 em 2026-01-01→2026-03-31: 2 linhas
-- 3.05 em 2026-01-01→2026-03-31: 2 linhas
-- 3.06 em 2026-01-01→2026-03-31: 2 linhas
-- 3.06.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.06.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.07 em 2026-01-01→2026-03-31: 2 linhas
-- 3.08 em 2026-01-01→2026-03-31: 2 linhas
-- 3.08.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.08.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.09 em 2026-01-01→2026-03-31: 2 linhas
-- 3.10 em 2026-01-01→2026-03-31: 2 linhas
-- 3.10.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.10.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.11 em 2026-01-01→2026-03-31: 2 linhas
-- 3.11.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.11.02 em 2026-01-01→2026-03-31: 2 linhas
-- 3.99 em 2026-01-01→2026-03-31: 2 linhas
-- 3.99.01 em 2026-01-01→2026-03-31: 2 linhas
-- 3.99.02 em 2026-01-01→2026-03-31: 2 linhas
+CNPJ_CIA, DT_REFER, VERSAO, DENOM_CIA, QT_ACAO_ORDIN_CAP_INTEGR, QT_ACAO_PREF_CAP_INTEGR, QT_ACAO_TOTAL_CAP_INTEGR, QT_ACAO_ORDIN_TESOURO, QT_ACAO_PREF_TESOURO, QT_ACAO_TOTAL_TESOURO
 
-## ITR 2026 (1T26) — TOTS3 (DENOM: TOTVS S.A.)
+## Amostra por ticker (ITR 2026) — linha mais recente
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2026-01-01 → 2026-03-31: 41 linhas
+### ABEV3
+- CNPJ_CIA: 07.526.557/0001-00
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: AMBEV S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 15763665
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 15763665
+- QT_ACAO_ORDIN_TESOURO: 166971
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 166971
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 1697046.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01.01 | Softwares | 1697046.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01.02 | Produtos de crédito | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -480080.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02.01 | Custo de Softwares | -480080.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02.02 | Custo de produtos de crédito | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.03 | Resultado Bruto | 1216966.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04 | Despesas/Receitas Operacionais | -866045.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.01 | Despesas com Vendas | -360061.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.02 | Despesas Gerais e Administrativas | -184163.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.04 | Outras Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.05 | Outras Despesas Operacionais | -321186.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.06 | Resultado de Equivalência Patrimonial | -635.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 350921.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06 | Resultado Financeiro | -67735.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.01 | Receitas Financeiras | 94529.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.02 | Despesas Financeiras | -162264.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 283186.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -59352.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.01 | Corrente | -41014.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.02 | Diferido | -18338.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.09 | Resultado Líquido das Operações Continuadas | 223834.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 8176.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 8176.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 232010.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 228830.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.02 | Atribuído a Sócios Não Controladores | 3180.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+### AXIA3
+- CNPJ_CIA: 00.001.180/0001-26
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: AXIA ENERGIA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 2028544
+- QT_ACAO_PREF_CAP_INTEGR: 886884
+- QT_ACAO_TOTAL_CAP_INTEGR: 2915428
+- QT_ACAO_ORDIN_TESOURO: 52238
+- QT_ACAO_PREF_TESOURO: 23181
+- QT_ACAO_TOTAL_TESOURO: 75419
 
-Sem duplicatas de conta no período filtrado.
+### B3SA3
+- CNPJ_CIA: 09.346.601/0001-25
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: B3 S.A. - BRASIL, BOLSA, BALCÃO
+- QT_ACAO_ORDIN_CAP_INTEGR: 5046500000
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 5046500000
+- QT_ACAO_ORDIN_TESOURO: 35720428
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 35720428
 
-## ITR 2026 (1T26) — TIMS3 (DENOM: TIM S.A.)
+### BBAS3
+- CNPJ_CIA: 00.000.000/0001-91
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: BCO BRASIL S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 5730834040
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 5730834040
+- QT_ACAO_ORDIN_TESOURO: 22370399
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 22370399
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2026-01-01 → 2026-03-31: 28 linhas
+### BBDC4
+- CNPJ_CIA: 60.746.948/0001-12
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: BCO BRADESCO S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 5303870781
+- QT_ACAO_PREF_CAP_INTEGR: 5288141247
+- QT_ACAO_TOTAL_CAP_INTEGR: 10592012028
+- QT_ACAO_ORDIN_TESOURO: 10650000
+- QT_ACAO_PREF_TESOURO: 10650000
+- QT_ACAO_TOTAL_TESOURO: 21300000
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 6806150.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -3242018.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.03 | Resultado Bruto | 3564132.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04 | Despesas/Receitas Operacionais | -2049614.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.01 | Despesas com Vendas | -1517724.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.02 | Despesas Gerais e Administrativas | -470767.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.04 | Outras Receitas Operacionais | 130904.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.05 | Outras Despesas Operacionais | -163950.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.04.06 | Resultado de Equivalência Patrimonial | -28077.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 1514518.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06 | Resultado Financeiro | -529858.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.01 | Receitas Financeiras | 433824.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.06.02 | Despesas Financeiras | -963682.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 984660.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -167567.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.01 | Corrente | -210993.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.08.02 | Diferido | 43426.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.09 | Resultado Líquido das Operações Continuadas | 817093.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 817093.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.11.02 | Atribuído a Sócios Não Controladores | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2026-01-01 | 2026-03-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+### BBSE3
+- CNPJ_CIA: 17.344.597/0001-94
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: BB SEGURIDADE PARTICIPAÇÕES S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1941400000
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1941400000
+- QT_ACAO_ORDIN_TESOURO: 151456
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 151456
 
-Sem duplicatas de conta no período filtrado.
+### CPLE3
+- CNPJ_CIA: 76.483.817/0001-20
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: CIA PARANAENSE DE ENERGIA - COPEL
+- QT_ACAO_ORDIN_CAP_INTEGR: 2982810590
+- QT_ACAO_PREF_CAP_INTEGR: 1
+- QT_ACAO_TOTAL_CAP_INTEGR: 2982810591
+- QT_ACAO_ORDIN_TESOURO: 12723294
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 12723294
 
-## DFP 2025 (anual — foco TIM) — RENT3 (DENOM: LOCALIZA FLEET S.A.)
+### CXSE3
+- CNPJ_CIA: 22.543.331/0001-00
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: CAIXA SEGURIDADE PARTICIPAÇÕES S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 3000000
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 3000000
+- QT_ACAO_ORDIN_TESOURO: 0
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 0
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2025-01-01 → 2025-12-31: 60 linhas
+### CYRE3
+- CNPJ_CIA: 73.178.600/0001-18
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: CYRELA BRAZIL REALTY S.A.EMPREEND E PART
+- QT_ACAO_ORDIN_CAP_INTEGR: 384000
+- QT_ACAO_PREF_CAP_INTEGR: 72800
+- QT_ACAO_TOTAL_CAP_INTEGR: 456800
+- QT_ACAO_ORDIN_TESOURO: 17689
+- QT_ACAO_PREF_TESOURO: 3354
+- QT_ACAO_TOTAL_TESOURO: 21043
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 10637697.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -6941261.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.03 | Resultado Bruto | 3696436.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04 | Despesas/Receitas Operacionais | -787844.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.01 | Despesas com Vendas | -521384.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.02 | Despesas Gerais e Administrativas | -266460.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.04 | Outras Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.05 | Outras Despesas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 2908592.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06 | Resultado Financeiro | -1390629.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.01 | Receitas Financeiras | 380327.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.02 | Despesas Financeiras | -1770956.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 1517963.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -531940.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.01 | Corrente | -18470.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.02 | Diferido | -513470.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.09 | Resultado Líquido das Operações Continuadas | 986023.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 986023.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 994010.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.02 | Atribuído a Sócios Não Controladores | -7987.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 41781588.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -30651613.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.03 | Resultado Bruto | 11129975.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04 | Despesas/Receitas Operacionais | -3318319.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.01 | Despesas com Vendas | -2437865.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.02 | Despesas Gerais e Administrativas | -880454.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.04 | Outras Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.05 | Outras Despesas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 7811656.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06 | Resultado Financeiro | -4613788.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.01 | Receitas Financeiras | 1707422.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.02 | Despesas Financeiras | -6321210.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 3197868.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -1327398.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.01 | Corrente | -443809.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.02 | Diferido | -883589.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.09 | Resultado Líquido das Operações Continuadas | 1870470.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 1870470.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 1875473.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.02 | Atribuído a Sócios Não Controladores | -5003.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+### EGIE3
+- CNPJ_CIA: 02.474.103/0001-19
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: ENGIE BRASIL ENERGIA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1142298836
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1142298836
+- QT_ACAO_ORDIN_TESOURO: 0
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 0
 
-**DUPLICATAS detectadas (28):**
-- 3.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.03 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.03 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.04 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.05 em 2025-01-01→2025-12-31: 2 linhas
-- 3.04.06 em 2025-01-01→2025-12-31: 2 linhas
-- 3.05 em 2025-01-01→2025-12-31: 2 linhas
-- 3.06 em 2025-01-01→2025-12-31: 2 linhas
-- 3.06.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.06.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.07 em 2025-01-01→2025-12-31: 2 linhas
-- 3.08 em 2025-01-01→2025-12-31: 2 linhas
-- 3.08.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.08.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.09 em 2025-01-01→2025-12-31: 2 linhas
-- 3.10 em 2025-01-01→2025-12-31: 2 linhas
-- 3.10.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.10.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.11 em 2025-01-01→2025-12-31: 2 linhas
-- 3.11.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.11.02 em 2025-01-01→2025-12-31: 2 linhas
-- 3.99 em 2025-01-01→2025-12-31: 2 linhas
-- 3.99.01 em 2025-01-01→2025-12-31: 2 linhas
-- 3.99.02 em 2025-01-01→2025-12-31: 2 linhas
+### EQTL3
+- CNPJ_CIA: 03.220.438/0001-73
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: EQUATORIAL S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1259235297
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1259235297
+- QT_ACAO_ORDIN_TESOURO: 1956510
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 1956510
 
-## DFP 2025 (anual — foco TIM) — TOTS3 (DENOM: TOTVS S.A.)
+### EZTC3
+- CNPJ_CIA: 08.312.229/0001-73
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: EZ TEC EMPREEND. E PARTICIPACOES S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 277359027
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 277359027
+- QT_ACAO_ORDIN_TESOURO: 3640973
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 3640973
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2025-01-01 → 2025-12-31: 39 linhas
+### FLRY3
+- CNPJ_CIA: 60.840.055/0001-31
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: FLEURY S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 547191026
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 547191026
+- QT_ACAO_ORDIN_TESOURO: 3566046
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 3566046
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 5771867.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.01.01 | Softwares | 5771867.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | -1716326.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.02.01 | Custo de Softwares | -1716326.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.03 | Resultado Bruto | 4055541.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04 | Despesas/Receitas Operacionais | -2932813.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.01 | Despesas com Vendas | -1300048.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.02 | Despesas Gerais e Administrativas | -584717.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.04 | Outras Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.05 | Outras Despesas Operacionais | -1059471.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 11423.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 1122728.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06 | Resultado Financeiro | -80750.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.01 | Receitas Financeiras | 270087.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.02 | Despesas Financeiras | -350837.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 1041978.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | -200256.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.01 | Corrente | -202779.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.02 | Diferido | 2523.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.09 | Resultado Líquido das Operações Continuadas | 841722.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 79020.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 79020.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 920742.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 891741.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.02 | Atribuído a Sócios Não Controladores | 29001.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+### GGBR4
+- CNPJ_CIA: 33.611.500/0001-19
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: GERDAU S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 717363819
+- QT_ACAO_PREF_CAP_INTEGR: 1275397330
+- QT_ACAO_TOTAL_CAP_INTEGR: 1992761149
+- QT_ACAO_ORDIN_TESOURO: 152000
+- QT_ACAO_PREF_TESOURO: 25134167
+- QT_ACAO_TOTAL_TESOURO: 25286167
 
-Sem duplicatas de conta no período filtrado.
+### HAPV3
+- CNPJ_CIA: 05.197.443/0001-38
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: HAPVIDA PARTICIPAÇÕES E INVESTIMENTOS S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 502630884
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 502630884
+- QT_ACAO_ORDIN_TESOURO: 27570745
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 27570745
 
-## DFP 2025 (anual — foco TIM) — TIMS3 (DENOM: TIM S.A.)
+### HYPE3
+- CNPJ_CIA: 02.932.074/0001-91
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: HYPERA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 704009059
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 704009059
+- QT_ACAO_ORDIN_TESOURO: 507090
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 507090
 
-Períodos no arquivo (ORDEM=ÚLTIMO):
-- 2025-01-01 → 2025-12-31: 31 linhas
+### INTB3
+- CNPJ_CIA: 82.901.000/0001-27
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: INTELBRAS S.A. IND. DE TELECOMUNICAÇÃO ELETRÔNICA BRASILEIRA
+- QT_ACAO_ORDIN_CAP_INTEGR: 327611110
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 327611110
+- QT_ACAO_ORDIN_TESOURO: 400000
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 400000
 
-| grupo | ini | fim | conta | descrição | valor |
-|---|---|---|---|---|---|
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.01 | Receita de Venda de Bens e/ou Serviços | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.02 | Custo dos Bens e/ou Serviços Vendidos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.03 | Resultado Bruto | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04 | Despesas/Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.01 | Despesas com Vendas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.02 | Despesas Gerais e Administrativas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.03 | Perdas pela Não Recuperabilidade de Ativos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.04 | Outras Receitas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.05 | Outras Despesas Operacionais | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.04.06 | Resultado de Equivalência Patrimonial | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.05 | Resultado Antes do Resultado Financeiro e dos Tributos | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06 | Resultado Financeiro | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.01 | Receitas Financeiras | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.06.02 | Despesas Financeiras | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.07 | Resultado Antes dos Tributos sobre o Lucro | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08 | Imposto de Renda e Contribuição Social sobre o Lucro | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.01 | Corrente | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.08.02 | Diferido | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.09 | Resultado Líquido das Operações Continuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10 | Resultado Líquido de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.01 | Lucro/Prejuízo Líquido das Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.10.02 | Ganhos/Perdas Líquidas sobre Ativos de Operações Descontinuadas | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11 | Lucro/Prejuízo Consolidado do Período | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.01 | Atribuído a Sócios da Empresa Controladora | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.11.02 | Atribuído a Sócios Não Controladores | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99 | Lucro por Ação - (Reais / Ação) | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.01 | Lucro Básico por Ação | 0.0000000000 |
-| DF Consolidado - Demonstração do Resultado | 2025-01-01 | 2025-12-31 | 3.99.02 | Lucro Diluído por Ação | 0.0000000000 |
+### ITUB4
+- CNPJ_CIA: 60.872.504/0001-23
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: ITAU UNIBANCO HOLDING S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 5617743
+- QT_ACAO_PREF_CAP_INTEGR: 5409126
+- QT_ACAO_TOTAL_CAP_INTEGR: 11026869
+- QT_ACAO_ORDIN_TESOURO: 0
+- QT_ACAO_PREF_TESOURO: 5510
+- QT_ACAO_TOTAL_TESOURO: 5510
 
-Sem duplicatas de conta no período filtrado.
+### KLBN11
+- CNPJ_CIA: 89.637.490/0001-45
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: KLABIN S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 2312800469
+- QT_ACAO_PREF_CAP_INTEGR: 3928678381
+- QT_ACAO_TOTAL_CAP_INTEGR: 6241478850
+- QT_ACAO_ORDIN_TESOURO: 19645988
+- QT_ACAO_PREF_TESOURO: 78582414
+- QT_ACAO_TOTAL_TESOURO: 98228402
+
+### LREN3
+- CNPJ_CIA: 92.754.738/0001-62
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: LOJAS RENNER S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1006845
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1006845
+- QT_ACAO_ORDIN_TESOURO: 30522
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 30522
+
+### MGLU3
+- CNPJ_CIA: 47.960.950/0001-21
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: MAGAZINE LUIZA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 775945010
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 775945010
+- QT_ACAO_ORDIN_TESOURO: 1064665
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 1064665
+
+### MULT3
+- CNPJ_CIA: 07.816.890/0001-53
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: MULTIPLAN - EMPREEND IMOBILIARIOS S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 513163701
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 513163701
+- QT_ACAO_ORDIN_TESOURO: 22755873
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 22755873
+
+### PETR4
+- CNPJ_CIA: 33.000.167/0001-01
+- DT_REFER: 2026-03-31
+- VERSAO: 2
+- DENOM_CIA: PETROLEO BRASILEIRO S.A. PETROBRAS
+- QT_ACAO_ORDIN_CAP_INTEGR: 7442231382
+- QT_ACAO_PREF_CAP_INTEGR: 5446501379
+- QT_ACAO_TOTAL_CAP_INTEGR: 12888732761
+- QT_ACAO_ORDIN_TESOURO: 0
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 0
+
+### PRIO3
+- CNPJ_CIA: 10.629.105/0001-68
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: PRIO S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 872495263
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 872495263
+- QT_ACAO_ORDIN_TESOURO: 65016557
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 65016557
+
+### PSSA3
+- CNPJ_CIA: 02.149.205/0001-69
+- DT_REFER: 2026-03-31
+- VERSAO: 2
+- DENOM_CIA: PORTO SEGURO S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 646586060
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 646586060
+- QT_ACAO_ORDIN_TESOURO: 6264142
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 6264142
+
+### RADL3
+- CNPJ_CIA: 61.585.865/0001-51
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: RAIA DROGASIL S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1752367344
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1752367344
+- QT_ACAO_ORDIN_TESOURO: 3831107
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 3831107
+
+### RDOR3
+- CNPJ_CIA: 06.047.087/0001-39
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: REDE D'OR SÃO LUIZ S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 2289292590
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 2289292590
+- QT_ACAO_ORDIN_TESOURO: 90080855
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 90080855
+
+### RENT3
+- CNPJ_CIA: 16.670.085/0001-55
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: LOCALIZA RENT A CAR S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1082620720
+- QT_ACAO_PREF_CAP_INTEGR: 41638625
+- QT_ACAO_TOTAL_CAP_INTEGR: 1124259345
+- QT_ACAO_ORDIN_TESOURO: 28038465
+- QT_ACAO_PREF_TESOURO: 1082149
+- QT_ACAO_TOTAL_TESOURO: 29120614
+
+### SBSP3
+- CNPJ_CIA: 43.776.517/0001-80
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: CIA SANEAMENTO BASICO EST SAO PAULO
+- QT_ACAO_ORDIN_CAP_INTEGR: 704906806
+- QT_ACAO_PREF_CAP_INTEGR: 1
+- QT_ACAO_TOTAL_CAP_INTEGR: 704906807
+- QT_ACAO_ORDIN_TESOURO: 3554431
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 3554431
+
+### SLCE3
+- CNPJ_CIA: 89.096.457/0001-55
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: SLC AGRICOLA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 498745930
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 498745930
+- QT_ACAO_ORDIN_TESOURO: 1933359
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 1933359
+
+### SUZB3
+- CNPJ_CIA: 16.404.287/0001-55
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: SUZANO S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1264117615
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1264117615
+- QT_ACAO_ORDIN_TESOURO: 280207650
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 280207650
+
+### TAEE11
+- CNPJ_CIA: 07.859.971/0001-30
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 590714
+- QT_ACAO_PREF_CAP_INTEGR: 442783
+- QT_ACAO_TOTAL_CAP_INTEGR: 1033497
+- QT_ACAO_ORDIN_TESOURO: 0
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 0
+
+### TIMS3
+- CNPJ_CIA: 02.421.421/0001-11
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: TIM S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 2392125889
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 2392125889
+- QT_ACAO_ORDIN_TESOURO: 3457567
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 3457567
+
+### TOTS3
+- CNPJ_CIA: 53.113.791/0001-22
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: TOTVS S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 599401581
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 599401581
+- QT_ACAO_ORDIN_TESOURO: 19553338
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 19553338
+
+### UGPA3
+- CNPJ_CIA: 33.256.439/0001-39
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: ULTRAPAR PARTICIPACOES S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 1115849873
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1115849873
+- QT_ACAO_ORDIN_TESOURO: 27495338
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 27495338
+
+### VALE3
+- CNPJ_CIA: 33.592.510/0001-54
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: VALE S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 4262534
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 4262534
+- QT_ACAO_ORDIN_TESOURO: 174626
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 174626
+
+### VBBR3
+- CNPJ_CIA: 34.274.233/0001-02
+- DT_REFER: 2026-03-31
+- VERSAO: 2
+- DENOM_CIA: VIBRA ENERGIA S/A
+- QT_ACAO_ORDIN_CAP_INTEGR: 1198000
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 1198000
+- QT_ACAO_ORDIN_TESOURO: 6007
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 6007
+
+### VIVT3
+- CNPJ_CIA: 02.558.157/0001-62
+- DT_REFER: 2026-03-31
+- VERSAO: 1
+- DENOM_CIA: TELEFÔNICA BRASIL S.A
+- QT_ACAO_ORDIN_CAP_INTEGR: 3226546622
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 3226546622
+- QT_ACAO_ORDIN_TESOURO: 30940270
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 30940270
+
+### WEGE3
+- CNPJ_CIA: 84.429.695/0001-11
+- DT_REFER: 2026-06-30
+- VERSAO: 1
+- DENOM_CIA: WEG S.A.
+- QT_ACAO_ORDIN_CAP_INTEGR: 4197317998
+- QT_ACAO_PREF_CAP_INTEGR: 0
+- QT_ACAO_TOTAL_CAP_INTEGR: 4197317998
+- QT_ACAO_ORDIN_TESOURO: 1488307
+- QT_ACAO_PREF_TESOURO: 0
+- QT_ACAO_TOTAL_TESOURO: 1488307
+
+
+**Seed gerado: supabase/migrations/008_seed_acoes.sql (39 tickers, coluna QT_ACAO_TOTAL_CAP_INTEGR).**
