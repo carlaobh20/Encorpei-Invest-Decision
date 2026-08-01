@@ -23,4 +23,5 @@ jobs:
           git config user.name "encorpei-bot"
           git config user.email "actions@github.com"
           git add tools/debug_dre.md
-          git diff --cached --quiet || (git commit -m "Debug DRE: linhas brutas Localiza/Totvs/TIM (automático)" && git push)
+          git add supabase/migrations/008_seed_acoes.sql 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Investigação CVM: composição de capital + seed de nº de ações (automático)" && git push)

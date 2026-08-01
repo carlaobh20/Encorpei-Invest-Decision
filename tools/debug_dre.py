@@ -1,15 +1,18 @@
 """
-Debug: imprime as linhas brutas da DRE consolidada de LOCALIZA, TOTVS e TIM
-para achar a causa das divergências detectadas na auditoria de 31/07/2026:
-- RENT3: receita/lucro ~24%/41% acima do divulgado
-- TOTS3: receita +6,3% acima do divulgado
-- TIMS3: DFP anual veio zerada
+Investigação: composição de capital na CVM (nº total de ações por empresa).
 
-Gera tools/debug_dre.md (commitado pelo workflow).
+Motivo (auditoria de 01/08/2026): o valor de mercado da brapi está errado
+para pelo menos 2 tickers — MULT3 (303 mi de ações implícitas vs 513 mi
+reais) e EGIE3 (1.425 mi vs 1.142 mi reais). Como o Valuation da nota usa
+market_cap, precisamos de fonte oficial: o zip ITR/DFP da CVM inclui o
+arquivo *composicao_capital*.csv com a quantidade de ações integralizadas.
+
+Saídas:
+- tools/debug_dre.md ................ relatório da investigação
+- supabase/migrations/008_seed_acoes.sql ... seed oficial (se o arquivo existir)
 """
 
 import io
-import re
 import time
 import unicodedata
 import zipfile
@@ -17,14 +20,10 @@ import zipfile
 import pandas as pd
 import requests
 
-BASE = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC"
-ALVOS = {
-    "RENT3": r"^LOCALIZA",
-    "TOTS3": r"^TOTVS",
-    "TIMS3": r"^TIM S\.?A",
-}
+from backfill_cvm import MAPA  # ticker -> regex sobre DENOM_CIA (sem acento)
 
-saida = ["# Debug DRE — Localiza, Totvs e TIM", ""]
+BASE = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC"
+saida = ["# Debug — composição de capital (nº de ações) na CVM", ""]
 
 
 def sem_acento(s):
@@ -43,60 +42,117 @@ def baixar(url):
     raise RuntimeError(f"download falhou: {url}")
 
 
-def dump(z, sufixo, titulo, so_periodo_curto):
-    nomes = [n for n in z.namelist() if n.endswith(sufixo)]
-    if not nomes:
-        saida.append(f"## {titulo}: arquivo *{sufixo} não encontrado")
-        return
-    df = pd.read_csv(z.open(nomes[0]), sep=";", encoding="latin-1", dtype=str)
+def achar_composicao(z, rotulo):
+    nomes = sorted(z.namelist())
+    saida.append(f"\n## Arquivos dentro de {rotulo}\n")
+    for n in nomes:
+        saida.append(f"- {n}")
+    alvo = [n for n in nomes if "composicao_capital" in n.lower()]
+    return alvo[0] if alvo else None
+
+
+def extrair(z, nome_csv, rotulo):
+    df = pd.read_csv(z.open(nome_csv), sep=";", encoding="latin-1", dtype=str)
+    saida.append(f"\n## Colunas de {nome_csv} ({rotulo})\n")
+    saida.append(", ".join(df.columns))
     df["DENOM_N"] = df["DENOM_CIA"].map(sem_acento)
-    for ticker, padrao in ALVOS.items():
+
+    linhas = {}
+    for ticker, padrao in MAPA.items():
         sel = df[df["DENOM_N"].str.contains(padrao, regex=True, na=False)]
         if sel.empty:
             continue
-        saida.append(f"\n## {titulo} — {ticker} "
-                     f"(DENOM: {sel['DENOM_CIA'].iloc[0]})\n")
-        sel = sel[sel["ORDEM_EXERC"].str.upper().str.startswith(("Ú", "U"))]
-        cols = [c for c in ["GRUPO_DFP", "MOEDA", "ESCALA_MOEDA", "VERSAO",
-                            "DT_INI_EXERC", "DT_FIM_EXERC", "CD_CONTA",
-                            "DS_CONTA", "VL_CONTA"] if c in sel.columns]
-        # períodos disponíveis
-        per = sel.groupby(["DT_INI_EXERC", "DT_FIM_EXERC"]).size().reset_index(name="linhas")
-        saida.append("Períodos no arquivo (ORDEM=ÚLTIMO):")
-        for _, p in per.iterrows():
-            saida.append(f"- {p['DT_INI_EXERC']} → {p['DT_FIM_EXERC']}: {p['linhas']} linhas")
-        # linhas de interesse: contas de nível alto
-        interesse = sel[sel["CD_CONTA"].str.match(r"^3\.\d{2}(\.\d{2})?$", na=False)]
-        if so_periodo_curto and "DT_INI_EXERC" in interesse.columns:
-            d = (pd.to_datetime(interesse["DT_FIM_EXERC"]) -
-                 pd.to_datetime(interesse["DT_INI_EXERC"])).dt.days
-            interesse = interesse[(d >= 80) & (d <= 100)]
-        saida.append("\n| grupo | ini | fim | conta | descrição | valor |")
-        saida.append("|---|---|---|---|---|---|")
-        for _, r in interesse.iterrows():
-            saida.append(
-                f"| {r.get('GRUPO_DFP','')} | {r.get('DT_INI_EXERC','')} | "
-                f"{r['DT_FIM_EXERC']} | {r['CD_CONTA']} | {r['DS_CONTA']} | "
-                f"{r['VL_CONTA']} |")
-        # contagem de duplicatas por conta+período
-        dup = interesse.groupby(
-            ["DT_INI_EXERC", "DT_FIM_EXERC", "CD_CONTA"]
-        ).size().reset_index(name="n")
-        dups = dup[dup["n"] > 1]
-        if len(dups):
-            saida.append(f"\n**DUPLICATAS detectadas ({len(dups)}):**")
-            for _, r in dups.iterrows():
-                saida.append(f"- {r['CD_CONTA']} em {r['DT_INI_EXERC']}→"
-                             f"{r['DT_FIM_EXERC']}: {r['n']} linhas")
-        else:
-            saida.append("\nSem duplicatas de conta no período filtrado.")
+        razoes = sorted(sel["DENOM_CIA"].unique())
+        if len(razoes) > 1:
+            saida.append(f"\n**{ticker}: {len(razoes)} razões sociais "
+                         f"({'; '.join(razoes)}) — descartado (guardrail)**")
+            continue
+        # última referência, maior versão
+        orden = [c for c in ["DT_REFER", "VERSAO"] if c in sel.columns]
+        sel = sel.sort_values(orden).tail(1)
+        linhas[ticker] = sel.iloc[0]
+
+    saida.append(f"\n## Amostra por ticker ({rotulo}) — linha mais recente\n")
+    for ticker, r in sorted(linhas.items()):
+        campos = {c: r[c] for c in r.index if c not in ("DENOM_N",)}
+        saida.append(f"### {ticker}")
+        for c, v in campos.items():
+            saida.append(f"- {c}: {v}")
+        saida.append("")
+    return linhas
+
+
+def gerar_seed(linhas):
+    """Gera a migração 008 se conseguirmos identificar a coluna do total."""
+    col_total = None
+    exemplo = next(iter(linhas.values()))
+    for c in exemplo.index:
+        cu = c.upper()
+        if "QT_ACAO_TOTAL" in cu and "TESOURARIA" not in cu:
+            col_total = c
+            break
+    if col_total is None:
+        saida.append("\n**Não achei coluna de total de ações — seed NÃO gerado. "
+                     "Ver colunas acima e ajustar o script.**")
+        return False
+
+    valores = []
+    for ticker, r in sorted(linhas.items()):
+        try:
+            qtd = float(str(r[col_total]).replace(",", "."))
+        except (TypeError, ValueError):
+            continue
+        if qtd <= 0:
+            continue
+        ref = r.get("DT_REFER", "")
+        valores.append(f"  ('{ticker}', {qtd:.0f}, '{ref}')")
+
+    if not valores:
+        saida.append("\n**Coluna encontrada mas sem valores válidos — seed NÃO gerado.**")
+        return False
+
+    corpo_valores = ",\n".join(valores)
+    sql = f"""-- 008: nº total de ações por empresa — fonte OFICIAL (CVM, composição
+-- de capital do ITR/DFP, coluna {col_total}).
+-- Motivo: o market_cap da brapi veio errado para MULT3 e EGIE3 (auditoria
+-- de 01/08/2026). O motor passa a calcular valor de mercado = fechamento ×
+-- qtd_acoes desta tabela; brapi vira apenas fallback.
+-- Gerado automaticamente por tools/debug_dre.py (GitHub Actions).
+
+create table if not exists acoes_totais (
+  ticker text primary key references empresas(ticker),
+  qtd_acoes numeric not null check (qtd_acoes > 0),
+  data_referencia date not null,
+  fonte text not null default 'cvm_composicao_capital',
+  atualizado_em timestamptz not null default now()
+);
+alter table acoes_totais enable row level security;
+drop policy if exists "leitura publica acoes" on acoes_totais;
+create policy "leitura publica acoes" on acoes_totais for select using (true);
+
+insert into acoes_totais (ticker, qtd_acoes, data_referencia) values
+{corpo_valores}
+on conflict (ticker) do update
+  set qtd_acoes = excluded.qtd_acoes,
+      data_referencia = excluded.data_referencia,
+      fonte = 'cvm_composicao_capital',
+      atualizado_em = now();
+"""
+    with open("supabase/migrations/008_seed_acoes.sql", "w") as f:
+        f.write(sql)
+    saida.append(f"\n**Seed gerado: supabase/migrations/008_seed_acoes.sql "
+                 f"({len(valores)} tickers, coluna {col_total}).**")
+    return True
 
 
 z_itr = baixar(f"{BASE}/ITR/DADOS/itr_cia_aberta_2026.zip")
-dump(z_itr, "DRE_con_2026.csv", "ITR 2026 (1T26)", so_periodo_curto=False)
-
-z_dfp = baixar(f"{BASE}/DFP/DADOS/dfp_cia_aberta_2025.zip")
-dump(z_dfp, "DRE_con_2025.csv", "DFP 2025 (anual — foco TIM)", so_periodo_curto=False)
+csv_itr = achar_composicao(z_itr, "itr_cia_aberta_2026.zip")
+if csv_itr:
+    linhas = extrair(z_itr, csv_itr, "ITR 2026")
+    gerar_seed(linhas)
+else:
+    saida.append("\n**ITR 2026 não tem arquivo composicao_capital — "
+                 "ver lista de arquivos acima para achar alternativa.**")
 
 with open("tools/debug_dre.md", "w") as f:
     f.write("\n".join(saida))
