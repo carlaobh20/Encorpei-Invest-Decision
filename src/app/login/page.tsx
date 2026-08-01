@@ -14,15 +14,17 @@ export default function Login() {
   const [msg, setMsg] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(false);
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // criado só no clique — nunca durante a renderização/build
+  const getSupabase = () =>
+    createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
 
   async function entrar() {
     setCarregando(true);
     setMsg(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    const { error } = await getSupabase().auth.signInWithPassword({ email, password: senha });
     if (error) setMsg(`Não entrou: ${error.message}`);
     else window.location.href = "/";
     setCarregando(false);
@@ -35,7 +37,7 @@ export default function Login() {
     }
     setCarregando(true);
     setMsg(null);
-    const { error } = await supabase.auth.signUp({ email, password: senha });
+    const { error } = await getSupabase().auth.signUp({ email, password: senha });
     if (error) setMsg(`Não criou: ${error.message}`);
     else
       setMsg(
