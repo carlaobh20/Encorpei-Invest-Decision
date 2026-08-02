@@ -112,6 +112,33 @@ export default async function Dashboard() {
     timeZone: "America/Sao_Paulo",
   });
 
+  // ---------- Decision Center: a resposta antes dos gráficos ----------
+  const horaSP = (new Date().getUTCHours() + 21) % 24; // UTC-3
+  const saudacao = horaSP < 12 ? "Bom dia" : horaSP < 18 ? "Boa tarde" : "Boa noite";
+  const agora = Date.now();
+  const ev24 = eventos.filter((e) => agora - new Date(e.criado_em).getTime() < 24 * 3_600_000);
+  const gat24 = ev24.filter((e) => e.tipo === "gatilho_disparado").length;
+  const mud24 = ev24.filter((e) => e.tipo === "mudanca_status").length;
+
+  // nota média de hoje vs a do pregão anterior (só com dado real)
+  const porData = new Map<string, number[]>();
+  for (const s of (scoresRaw as unknown as ScoreRow[]) ?? []) {
+    const arr = porData.get(s.data) ?? [];
+    arr.push(s.score_final);
+    porData.set(s.data, arr);
+  }
+  const datasScore = [...porData.keys()].sort().reverse();
+  const media = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const notaMedia = datasScore[0] ? media(porData.get(datasScore[0])!) : null;
+  const notaAnterior = datasScore[1] ? media(porData.get(datasScore[1])!) : null;
+  const deltaNota = notaMedia !== null && notaAnterior !== null ? notaMedia - notaAnterior : null;
+  const lider = ranking[0];
+
+  const precisaAgir = gat24 + mud24 > 0;
+  const resposta = precisaAgir
+    ? `${gat24 > 0 ? `${gat24} gatilho${gat24 > 1 ? "s" : ""} disparou` : ""}${gat24 > 0 && mud24 > 0 ? " e " : ""}${mud24 > 0 ? `${mud24} tese${mud24 > 1 ? "s" : ""} mudou de status` : ""} nas últimas 24h — comece por "O que mudou".`
+    : "Nenhum gatilho disparou e nenhuma tese mudou nas últimas 24h. Nada exige sua ação agora — suas teses seguem de pé.";
+
   return (
     <main className="h-dvh overflow-hidden bg-slate-950 text-slate-100 [background:radial-gradient(80%_60%_at_50%_0%,rgba(16,185,129,0.07),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(59,130,246,0.05),transparent),#020617]">
       <div className="mx-auto flex h-full max-w-6xl flex-col gap-3 px-6 py-4">
@@ -124,35 +151,72 @@ export default async function Dashboard() {
             <p className="text-xs capitalize text-slate-500">{hoje}</p>
           </div>
           <nav className="flex items-center gap-2 text-xs">
-            <Link href="/teses" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Teses</Link>
-            <Link href="/ranking" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Ranking</Link>
-            <Link href="/diario" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Diário</Link>
-            <Link href="/replay" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Replay</Link>
-            <Link href="/auditoria" className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300">Auditoria</Link>
+            {[
+              ["/teses", "Teses"], ["/ranking", "Ranking"], ["/comparar", "Comparar"],
+              ["/diario", "Diário"], ["/replay", "Replay"], ["/timemachine", "Time Machine"],
+              ["/algoritmo", "Algoritmo"], ["/auditoria", "Auditoria"],
+            ].map(([href, rotulo]) => (
+              <Link
+                key={href}
+                href={href}
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-400 transition-colors hover:border-white/25 hover:text-slate-100"
+              >
+                {rotulo}
+              </Link>
+            ))}
           </nav>
         </header>
 
-        {/* ---------- resumo do dia ---------- */}
-        <div className="flex gap-3">
-          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2">
-            <p className="text-lg font-bold text-slate-100">{ranking.length}</p>
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">teses vigiadas</p>
+        {/* ---------- Decision Center: a resposta antes dos gráficos ---------- */}
+        <section className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-4 backdrop-blur">
+          <div className="flex items-start justify-between gap-6">
+            <div className="min-w-0">
+              <h2 className="text-xl font-semibold tracking-tight text-slate-100">
+                {saudacao}, Carlos.
+              </h2>
+              <p className={`mt-1 text-[13.5px] leading-relaxed ${precisaAgir ? "text-amber-200" : "text-slate-300"}`}>
+                {resposta}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-5 text-right">
+              <div>
+                <p className="text-lg font-bold text-slate-100">
+                  {notaMedia !== null ? notaMedia.toFixed(0) : "—"}
+                  {deltaNota !== null && deltaNota !== 0 && (
+                    <span className={`ml-1 text-xs font-semibold ${deltaNota > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {deltaNota > 0 ? "▲" : "▼"}{Math.abs(deltaNota).toFixed(1)}
+                    </span>
+                  )}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">nota média</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-slate-100">{ranking.length}</p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">teses vigiadas</p>
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${emRevisao > 0 ? "text-amber-300" : "text-slate-100"}`}>
+                  {emRevisao}
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">em revisão</p>
+              </div>
+              {lider && (
+                <div>
+                  <p className="text-lg font-bold text-slate-100">
+                    <Link href={`/tese/${lider.ticker}`} className="hover:underline">
+                      <span className="font-mono">{lider.ticker}</span>{" "}
+                      <span className="text-emerald-400">{lider.score_final}</span>
+                    </Link>
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">tese mais forte</p>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2">
-            <p className={`text-lg font-bold ${emRevisao > 0 ? "text-amber-300" : "text-emerald-300"}`}>
-              {emRevisao}
-            </p>
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">em revisão</p>
-          </div>
-          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-2">
-            <p className="text-lg font-bold text-slate-100">{eventos.length}</p>
-            <p className="text-[10px] uppercase tracking-wider text-slate-500">eventos 48h</p>
-          </div>
-          <div className="ml-auto self-center text-right text-[11px] text-slate-600">
-            Sistema de apoio à decisão de uso pessoal.<br />
-            Não constitui recomendação de investimento.
-          </div>
-        </div>
+          <p className="mt-2 text-[10.5px] text-slate-600">
+            Sistema de apoio à decisão de uso pessoal — não constitui recomendação de investimento.
+          </p>
+        </section>
 
         {/* ---------- corpo ---------- */}
         <div className="grid min-h-0 flex-1 grid-cols-12 gap-3">

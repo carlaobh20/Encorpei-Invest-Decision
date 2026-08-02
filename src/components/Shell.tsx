@@ -4,14 +4,20 @@ import Link from "next/link";
  * Casca visual padrão do Encorpei — fundo com gradientes, navegação
  * unificada e container de tela única. Toda página nova nasce dentro dela.
  */
+/**
+ * Navegação organizada pelo CONCEITO DE DECISÃO, não por telas:
+ * decidir → analisar → registrar → auditar. Só entram itens que
+ * existem de verdade — menu não faz promessa.
+ */
 const LINKS: [string, string][] = [
-  ["/", "Dashboard"],
+  ["/", "Decision Center"],
   ["/teses", "Teses"],
   ["/ranking", "Ranking"],
   ["/comparar", "Comparar"],
   ["/diario", "Diário"],
   ["/replay", "Replay"],
   ["/timemachine", "Time Machine"],
+  ["/algoritmo", "Algoritmo"],
   ["/auditoria", "Auditoria"],
 ];
 
@@ -44,8 +50,8 @@ export function Shell({
                 href={href}
                 className={`rounded-lg border px-3 py-1.5 transition-colors ${
                   ativo === href
-                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                    : "border-white/10 text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300"
+                    ? "border-sky-400/40 bg-sky-500/10 text-sky-200"
+                    : "border-white/10 text-slate-400 hover:border-white/25 hover:text-slate-100"
                 }`}
               >
                 {rotulo}
