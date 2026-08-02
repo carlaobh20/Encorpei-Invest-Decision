@@ -1,0 +1,25 @@
+name: CI (testes + build)
+
+# Todo push na main passa por aqui. Se uma régua do algoritmo mudar sem
+# querer, ou uma tela quebrar o build, este robô acusa em minutos — antes
+# de qualquer confiança ser depositada no deploy.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Testes das regras (score, fundamentos, técnica)
+        run: npm test
+      - name: Build do app
+        run: npm run build
