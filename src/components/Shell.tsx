@@ -11,6 +11,7 @@ import Link from "next/link";
  */
 const LINKS: [string, string][] = [
   ["/", "Decision Center"],
+  ["/radar", "Radar"],
   ["/teses", "Teses"],
   ["/ranking", "Ranking"],
   ["/comparar", "Comparar"],

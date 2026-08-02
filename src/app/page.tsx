@@ -152,7 +152,7 @@ export default async function Dashboard() {
           </div>
           <nav className="flex items-center gap-2 text-xs">
             {[
-              ["/teses", "Teses"], ["/ranking", "Ranking"], ["/comparar", "Comparar"],
+              ["/radar", "Radar"], ["/teses", "Teses"], ["/ranking", "Ranking"], ["/comparar", "Comparar"],
               ["/diario", "Diário"], ["/replay", "Replay"], ["/timemachine", "Time Machine"],
               ["/algoritmo", "Algoritmo"], ["/auditoria", "Auditoria"],
             ].map(([href, rotulo]) => (

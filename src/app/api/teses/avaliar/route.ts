@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { calcularScore } from "@/lib/score";
+import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
 
 /**
  * MOTOR DE GATILHOS — coração da Tese Viva.
@@ -61,13 +62,7 @@ export async function GET(req: NextRequest) {
       m.divida_liquida = fund[0].divida_liquida;
       // ROIC: média dos últimos 4 trimestres (mata a sazonalidade que
       // gerou o falso alarme da Intelbras em 31/07/2026)
-      const roicsTri = fund
-        .filter((f) => f.fonte === "cvm_itr" && f.roic !== null)
-        .slice(0, 4)
-        .map((f) => Number(f.roic));
-      m.roic = roicsTri.length
-        ? roicsTri.reduce((a, b) => a + b, 0) / roicsTri.length
-        : fund[0].roic;
+      m.roic = roicMedia4Tri(fund) ?? fund[0].roic;
     }
 
     const desde = new Date(Date.now() - 30 * 86_400_000)
@@ -152,27 +147,8 @@ export async function GET(req: NextRequest) {
 
     const maisRecente = funds[0];
 
-    // lucro dos últimos 12 meses: último anual (DFP) + trimestres
-    // posteriores (ITR) - trimestres equivalentes do ano anterior
-    let lucro_ltm: number | null = null;
-    const dfp = funds.find((f) => f.fonte === "cvm_dfp");
-    if (dfp?.lucro_liquido !== null && dfp?.lucro_liquido !== undefined) {
-      lucro_ltm = Number(dfp.lucro_liquido);
-      const posteriores = funds.filter(
-        (f) => f.fonte === "cvm_itr" && f.competencia > dfp.competencia
-      );
-      for (const p of posteriores) {
-        const anoAnterior = `${Number(p.competencia.slice(0, 4)) - 1}${p.competencia.slice(4)}`;
-        const equivalente = funds.find(
-          (f) => f.fonte === "cvm_itr" && f.competencia === anoAnterior
-        );
-        if (p.lucro_liquido === null || !equivalente || equivalente.lucro_liquido === null) {
-          lucro_ltm = null;
-          break;
-        }
-        lucro_ltm += Number(p.lucro_liquido) - Number(equivalente.lucro_liquido);
-      }
-    }
+    // lucro dos últimos 12 meses — regra compartilhada (lib/fundamentos)
+    const lucro_ltm = lucroLTM(funds);
 
     // Valor de mercado: fonte OFICIAL primeiro (nº de ações da CVM ×
     // fechamento). A auditoria de 01/08/2026 pegou a brapi informando
