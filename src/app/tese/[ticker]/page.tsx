@@ -7,6 +7,7 @@ import {
   condicaoAtendida,
 } from "@/lib/metricas";
 import { GraficoBarras, rotuloTrimestre } from "@/components/GraficoBarras";
+import { lerMomento } from "@/lib/tecnica";
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +119,7 @@ export default async function TesePage({
         .from("precos_diarios")
         .select("data, fechamento")
         .eq("ticker", tese.ticker)
-        .gte("data", new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10))
+        .gte("data", new Date(Date.now() - 150 * 86_400_000).toISOString().slice(0, 10))
         .order("data", { ascending: true }),
       supabase
         .from("gatilhos")
@@ -150,11 +151,14 @@ export default async function TesePage({
       ? roicsTri.reduce((a, b) => a + b, 0) / roicsTri.length
       : fund[0].roic;
   }
-  if (precos && precos.length >= 5) {
-    const max = Math.max(...precos.map((p) => Number(p.fechamento)));
-    const ultimo = Number(precos[precos.length - 1].fechamento);
+  const desde30 = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const precos30 = (precos ?? []).filter((p) => p.data >= desde30);
+  if (precos30.length >= 5) {
+    const max = Math.max(...precos30.map((p) => Number(p.fechamento)));
+    const ultimo = Number(precos30[precos30.length - 1].fechamento);
     if (max > 0) metricasAtuais.queda_preco_30d = (max - ultimo) / max;
   }
+  const momento = lerMomento((precos ?? []).map((p) => Number(p.fechamento)));
   const competencia = fund?.[0]?.competencia
     ? String(fund[0].competencia).split("-").reverse().join("/")
     : null;
@@ -297,6 +301,48 @@ export default async function TesePage({
                   );
                 })}
               </div>
+            </section>
+
+            {/* ---------- momento (leitura técnica) ---------- */}
+            <section className="rounded-2xl border border-white/5 bg-white/[0.03] p-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                  Momento — leitura técnica do preço
+                </h2>
+                <p className="text-[10px] text-slate-600">
+                  descreve o preço; a decisão continua sua — fundamento primeiro
+                </p>
+              </div>
+              {momento.prontos.length > 0 ? (
+                <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {momento.prontos.map((m) => (
+                    <div
+                      key={m.indicador}
+                      className={`rounded-xl border p-2.5 ${
+                        m.tom === "atencao_positiva"
+                          ? "border-sky-400/20 bg-sky-500/[0.05]"
+                          : m.tom === "atencao_negativa"
+                            ? "border-amber-500/20 bg-amber-500/[0.05]"
+                            : "border-white/5 bg-white/[0.02]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[11px] font-medium text-slate-300">{m.indicador}</p>
+                        <span className="shrink-0 rounded-md bg-white/[0.06] px-2 py-0.5 font-mono text-[12px] text-slate-200">
+                          {m.valor}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-snug text-slate-500">{m.leitura}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {momento.pendentes.length > 0 && (
+                <p className="mt-2 text-[10.5px] leading-snug text-slate-600">
+                  Acendem sozinhos conforme os pregões acumulam:{" "}
+                  {momento.pendentes.join(" · ")}.
+                </p>
+              )}
             </section>
 
             {(() => {
