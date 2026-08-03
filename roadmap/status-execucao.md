@@ -1,11 +1,66 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~18h (Auditoria de dados: dívida/ROIC vazando para bancos + valor de mercado desatualizado — corrigido e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~19h (PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
 
 ## ESTADO DAS FASES
 - Fase 0 ✅ · 1 ✅ · 2.5 ✅ · 3 ✅ · Fase 7 adiantada
 - Fase 2: 11 teses RATIFICADAS ✅ · Fase 4 ✅ · Fase 5 em curso (1ª decisão ABEV3)
-- Segurança ✅ · Qualidade ✅ (120 testes + CI)
+- Segurança ✅ · Qualidade ✅ (140 testes + CI)
+
+## NOVO (03/08 ~19h): PIC 01 FASE 1 — ENCORPEI VIRA PLATAFORMA DE PATRIMÔNIO ✅ NO AR (decisão registrada em `roadmap/pic01-patrimonio-v1.md`)
+Carlos mandou a especificação completa "PIC 01" (~20 módulos: Master
+Decision Engine unificando 9 motores, Confluence Score, Portfolio Health,
+Performance Attribution, Replay histórico completo, What Changed Engine,
+Decision History, painel de IA, roadmap p/ Digital Twin/Monte Carlo/
+multi-asset) e pediu pra eu decidir o melhor caminho ("faça o que achar
+melhor... quero o melhor"). **Decisão registrada, foi minha:** dividir em
+fases — o roadmap original do próprio Encorpei já tinha avisado que tentar
+tudo de uma vez é escopo de equipe de 10+ pessoas por anos, e boa parte do
+pedido pede de volta exatamente o que o Confluence Score (implantado
+HORAS antes deste pedido) já tinha decidido deixar de fora por falta de
+dado honesto (Fluxo institucional, Gestão).
+
+**O que entrou nesta Fase 1, construído/testado/no ar:**
+- **Home ("/") virou "Meu Patrimônio"**: mantém tudo que já existia
+  (mudanças 48h, radar, ranking, diário, cenário macro) e ganha painel
+  novo — patrimônio atual, rentabilidade desde a compra, Alpha vs. CDI e
+  Ibovespa, drawdown, Sharpe.
+- **Motor de Patrimônio** (`src/lib/patrimonio.ts`): série diária
+  comparada com CDI/IPCA/Ibovespa por SIMULAÇÃO DE APORTE (mesmo capital,
+  mesma data, no benchmark) — método honesto que não exige um ledger de
+  transações completo. Só entram posições com data de compra registrada.
+- **Decision Feed**: ação sugerida por posição (Aumentar/Reduzir
+  prioridade, Aguardar melhor ponto, Nenhuma ação) — 100% por regras
+  cruzando status da tese + Tese Técnica + timing, nunca IA, nunca
+  "comprar/vender" (testado).
+- **Saúde da Carteira** (`/saude-carteira`, nova página): concentração
+  (índice HHI), diversificação por modelo, Carry/ROIC/valuation médios
+  ponderados, sensibilidade média à Selic — com cobertura sempre visível.
+- **Menu reorganizado**: "Patrimônio" é o 1º grupo (Meu Patrimônio →
+  Carteira → Saúde da Carteira). Nenhuma rota removida.
+
+**O que ficou de fora — decisão registrada, e o que precisa da sua
+ratificação** (detalhe completo no doc):
+- Master Engine com Fluxo/Gestão como notas 0-100 REAIS: não fabriquei —
+  precisa de fonte de dado paga (Fluxo) ou proxy que ainda não existe
+  (Gestão). Decisão de manter ausente continua valendo até você decidir
+  diferente.
+- Replay histórico completo e Performance Attribution: exigem infra nova
+  (snapshot diário de Carry/Compounder/Technical/Confluence — hoje só o
+  motor antigo tem `scores` diário — e ledger de transações completo, hoje
+  só tem 1 data de compra por posição). Fase 2.
+- Painel de IA em linguagem natural: já bloqueado por falta de
+  `ANTHROPIC_API_KEY` (item antigo da fila).
+
+Estado atual: Carlos ainda não registrou nenhuma posição com data de
+compra em `/carteira` (verificado ao vivo — Carteira, Meu Patrimônio e
+Saúde da Carteira mostram corretamente o estado "registre suas posições"),
+então o painel novo ainda não tem o que mostrar — é a primeira coisa da
+fila agora.
+
+140 testes (120 + 20 novos: 9 de patrimônio, 6 de Decision Feed, 5 de
+Saúde da Carteira), build limpo, verificado ao vivo em produção. Commits
+`bd1e8ca` (motor) e `ba65e7f` (aviso desatualizado na Carteira corrigido).
 
 ## NOVO (03/08 ~18h): AUDITORIA DE DADOS — dívida/ROIC de bancos + valor de mercado do Sabesp ✅ CORRIGIDO E NO AR
 Carlos reportou dois problemas concretos, com print do Radar: "Bradesco não tem dívida, aí mostra com muita dívida" e "Sabesp não tem os números batendo com a realidade". Investigação confirmou os dois, e achou que o mesmo padrão de bug se repetia em 4 lugares do sistema — incluindo o motor OFICIAL que grava nota imutável.
@@ -70,7 +125,7 @@ Sem mudanças hoje.
 20h coleta+sync (idempotente) · 20h30-35 motor · 20h58 bloco de fiação · 21h34 supervisão avisa o Carlos.
 
 ## FILA DO CARLOS
-1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. Registrar posições REAIS em /carteira · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. (novo) considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados hoje (SBSP3, MULT3, AXIA3, EGIE3) — a correção de hoje é reativa (autocorrige quando detecta), não vai atrás de checar proativamente todo mês.
+1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. **Registrar posições REAIS em /carteira COM data de compra** — sem isso, o novo painel Meu Patrimônio (Alpha/drawdown/Sharpe) fica sem o que mostrar; é o item que mais destrava agora · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados em 03/08 (SBSP3, MULT3, AXIA3, EGIE3) · 15. (novo, PIC 01) decidir sobre Fluxo institucional (contratar fonte paga?) e sobre o texto/limite da "carteira Compounder" com pesos sugeridos — ambos batem na regra 7/CI · 16. (novo, PIC 01) quando quiser Replay histórico completo e Performance Attribution de verdade, avisar — precisa de uma peça de infraestrutura nova (snapshot diário dos motores + ledger de transações) antes de virar tela.
 
 ## PRÓXIMOS
 Fase C: coletor IF.data/Bacen · SUSEP · perfis de sensibilidade macro · Carry Cash v3 · Sharpe/alpha da carteira. FDIE Fase 2, Compounder Fase 2 e Technical Fase 2 (hierarquia semanal/mensal, padrões gráficos, backtest) — todos gated em decisões do Carlos ou mais profundidade de dado coletado.
