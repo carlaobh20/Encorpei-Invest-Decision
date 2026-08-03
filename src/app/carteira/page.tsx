@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Shell } from "@/components/Shell";
 import { consolidarCarteira, notaPonderada, type Posicao } from "@/lib/carteira";
 import { ROTULO_MODELO } from "@/lib/setores";
+import { AcoesPosicao } from "@/components/AcoesPosicao";
 
 export const dynamic = "force-dynamic";
 
@@ -177,8 +178,9 @@ export default async function Carteira() {
           <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
             Registrar / atualizar posição
           </h2>
-          <form action={salvarPosicao} className="mt-3 space-y-3 text-sm">
+          <form id="form-posicao" action={salvarPosicao} className="mt-3 space-y-3 text-sm">
             <select
+              id="f-ticker"
               name="ticker"
               required
               className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-slate-200 focus:border-sky-400/50 focus:outline-none"
@@ -192,6 +194,7 @@ export default async function Carteira() {
             </select>
             <div className="grid grid-cols-2 gap-2">
               <input
+                id="f-quantidade"
                 type="number"
                 name="quantidade"
                 required
@@ -201,6 +204,7 @@ export default async function Carteira() {
                 className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-slate-200 placeholder:text-slate-600 focus:border-sky-400/50 focus:outline-none"
               />
               <input
+                id="f-preco"
                 type="text"
                 name="preco_medio"
                 inputMode="decimal"
@@ -210,6 +214,7 @@ export default async function Carteira() {
             </div>
             <div>
               <input
+                id="f-data"
                 type="date"
                 name="data_compra"
                 max={new Date().toISOString().slice(0, 10)}
@@ -228,8 +233,9 @@ export default async function Carteira() {
             </button>
             <p className="text-[10px] leading-snug text-slate-600">
               O acesso a este app já é protegido por login na Vercel — sem
-              chave extra aqui. Registrar o mesmo ticker de novo ATUALIZA a
-              posição (estado atual). Quantidade 0 remove a posição. A decisão em
+              chave extra aqui. Use os botões &quot;editar&quot;/&quot;excluir&quot; na
+              tabela ao lado para alterar ou remover uma posição já
+              registrada. A decisão em
               si (comprei/vendi e por quê) merece um registro no{" "}
               <Link href="/diario" className="text-sky-400 hover:underline">
                 Diário
@@ -267,7 +273,8 @@ export default async function Carteira() {
                     <th className="py-1.5 pr-2 text-right">Valor atual</th>
                     <th className="py-1.5 pr-2 text-right">Resultado</th>
                     <th className="py-1.5 pr-2 text-right">Peso</th>
-                    <th className="py-1.5 text-right">Tese</th>
+                    <th className="py-1.5 pr-2 text-right">Tese</th>
+                    <th className="py-1.5 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,7 +311,7 @@ export default async function Carteira() {
                       <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
                         {pct(l.peso)}
                       </td>
-                      <td className="py-1.5 text-right">
+                      <td className="py-1.5 pr-2 text-right">
                         {statusTese.has(l.ticker) ? (
                           <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
                             {statusTese.get(l.ticker)}
@@ -317,6 +324,15 @@ export default async function Carteira() {
                             sem tese
                           </span>
                         )}
+                      </td>
+                      <td className="py-1.5 text-right">
+                        <AcoesPosicao
+                          ticker={l.ticker}
+                          quantidade={l.quantidade}
+                          precoMedio={l.precoMedio}
+                          dataCompra={l.dataCompra}
+                          excluirAction={salvarPosicao}
+                        />
                       </td>
                     </tr>
                   ))}
