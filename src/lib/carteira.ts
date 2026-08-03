@@ -8,7 +8,13 @@
 
 import { modeloDe, ROTULO_MODELO, type ModeloAnalise } from "./setores";
 
-export type Posicao = { ticker: string; quantidade: number; preco_medio: number };
+export type Posicao = {
+  ticker: string;
+  quantidade: number;
+  preco_medio: number;
+  /** opcional — habilita comparação futura com CDI/Ibovespa DESDE A COMPRA */
+  data_compra?: string | null;
+};
 
 export type LinhaCarteira = {
   ticker: string;
@@ -21,6 +27,7 @@ export type LinhaCarteira = {
   resultadoPct: number | null;
   peso: number | null; // % do valor atual total
   modelo: ModeloAnalise | null;
+  dataCompra: string | null;
 };
 
 export type Consolidado = {
@@ -53,6 +60,7 @@ export function consolidarCarteira(
         resultado !== null && valorInvestido > 0 ? resultado / valorInvestido : null,
       peso: null, // preenchido abaixo
       modelo: modeloDe(p.ticker),
+      dataCompra: p.data_compra ?? null,
     };
   });
 

@@ -1,0 +1,35 @@
+name: Coleta Benchmarks (CDI/IPCA — BCB)
+
+# Dias úteis de manhã, junto com os outros coletores. stdout sempre
+# commitado — diagnóstico auditável, padrão da casa.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 11 * * 1-5" # 08h BRT, dias úteis
+  push:
+    paths:
+      - "tools/.trigger-benchmarks"
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Coletar e commitar (sempre)
+        run: |
+          pip install requests
+          python tools/coleta_benchmarks.py > tools/benchmarks_stdout.txt 2>&1 || echo "script falhou (ver stdout)" >> tools/benchmarks_stdout.txt
+          git config user.name "encorpei-bot"
+          git config user.email "actions@github.com"
+          git add -f tools/benchmarks_stdout.txt
+          git add tools/benchmarks_relatorio.md 2>/dev/null || true
+          git add -f tools/dados/benchmarks_macro.json 2>/dev/null || true
+          git add supabase/migrations/015_benchmarks.sql 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Benchmarks: CDI/IPCA atualizados (automático)" && git push)

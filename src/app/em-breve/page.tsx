@@ -13,7 +13,7 @@ const MODULOS: Record<string, { nome: string; oque: string; destrava: string }> 
   benchmarks: {
     nome: "Carteira vs CDI/Ibovespa",
     oque: "A Carteira já existe (menu Registrar). O que falta é a comparação com benchmarks: sua carteira rendeu mais ou menos que o CDI e o Ibovespa? E Sharpe/risco medidos de verdade.",
-    destrava: "Duas coisas: série de patrimônio acumulada (começou a nascer com o registro de posições) e coleta oficial de CDI/IPCA (API do Banco Central) e Ibovespa. Sem série, qualquer Sharpe seria número inventado.",
+    destrava: "A coleta de CDI/IPCA (BCB) e Ibovespa (mesma fonte das ações) já está ligada e roda sozinha a partir de hoje. O que falta é acumular: cada dia que passa com posições registradas soma um ponto na série de patrimônio — sem série longa o bastante, qualquer Sharpe seria número inventado.",
   },
   watchlist: {
     nome: "Watchlist",

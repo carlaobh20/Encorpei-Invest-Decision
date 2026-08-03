@@ -27,6 +27,8 @@ async function salvarPosicao(formData: FormData) {
   const ticker = String(formData.get("ticker") ?? "").toUpperCase();
   const quantidade = Number(formData.get("quantidade") ?? 0);
   const precoMedio = Number(String(formData.get("preco_medio") ?? "0").replace(",", "."));
+  const dataCompraRaw = String(formData.get("data_compra") ?? "").trim();
+  const dataCompra = dataCompraRaw.length > 0 ? dataCompraRaw : null;
 
   // Mesmo padrão do Diário: usuário logado dispensa o PIN.
   const { usuarioLogado } = await import("@/lib/supabase-auth");
@@ -56,6 +58,7 @@ async function salvarPosicao(formData: FormData) {
         ticker,
         quantidade,
         preco_medio: precoMedio,
+        data_compra: dataCompra,
         user_id: user?.id ?? null,
         atualizado_em: new Date().toISOString(),
       },
@@ -77,7 +80,7 @@ export default async function Carteira() {
 
   const { data: posicoesRaw, error: erroPosicoes } = await supabase
     .from("posicoes")
-    .select("ticker, quantidade, preco_medio")
+    .select("ticker, quantidade, preco_medio, data_compra")
     .order("ticker");
 
   // Guarda: migração 014 ainda não aplicada → avisar, nunca quebrar.
@@ -211,6 +214,18 @@ export default async function Carteira() {
                 className="rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-slate-200 placeholder:text-slate-600 focus:border-sky-400/50 focus:outline-none"
               />
             </div>
+            <div>
+              <input
+                type="date"
+                name="data_compra"
+                max={new Date().toISOString().slice(0, 10)}
+                className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-slate-200 placeholder:text-slate-600 focus:border-sky-400/50 focus:outline-none"
+              />
+              <p className="mt-1 text-[10px] text-slate-600">
+                Desde quando (opcional) — sem isso, a comparação futura com
+                CDI/Ibovespa fica indisponível SÓ para este papel.
+              </p>
+            </div>
             <input
               type="password"
               name="chave"
@@ -277,6 +292,11 @@ export default async function Carteira() {
                         <span className="ml-2 rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-500">
                           {l.modelo ? ROTULO_MODELO[l.modelo] : "—"}
                         </span>
+                        {l.dataCompra && (
+                          <span className="ml-2 text-[10px] text-slate-600">
+                            desde {new Date(l.dataCompra + "T00:00:00").toLocaleDateString("pt-BR")}
+                          </span>
+                        )}
                       </td>
                       <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
                         {l.quantidade.toLocaleString("pt-BR")}

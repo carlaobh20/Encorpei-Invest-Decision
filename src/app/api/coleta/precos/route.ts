@@ -174,6 +174,32 @@ export async function GET(req: NextRequest) {
       } catch {
         /* tabela 012 pendente — segue o jogo */
       }
+
+      // Benchmarks oficiais (CDI/IPCA via BCB/SGS) — destrava a comparação
+      // da Carteira com referências reais.
+      try {
+        const rBmk = await fetch(
+          "https://raw.githubusercontent.com/carlaobh20/Encorpei-Invest-Decision/main/tools/dados/benchmarks_macro.json",
+          { cache: "no-store" }
+        );
+        if (rBmk.ok) {
+          const jb = (await rBmk.json()) as { benchmarks: Record<string, unknown>[] };
+          let nBmk = 0;
+          for (let i = 0; i < (jb.benchmarks ?? []).length; i += 500) {
+            const { error } = await supabase
+              .from("benchmarks_diarios")
+              .upsert(jb.benchmarks.slice(i, i + 500), {
+                onConflict: "indicador,data",
+                ignoreDuplicates: true,
+              });
+            if (error) break;
+            nBmk += Math.min(500, jb.benchmarks.length - i);
+          }
+          fundamentos_sync += ` · ${nBmk} obs. CDI/IPCA`;
+        }
+      } catch {
+        /* tabela 015 pendente — segue o jogo */
+      }
     } else {
       fundamentos_sync = `JSON indisponível (HTTP ${rSync.status})`;
     }
@@ -271,10 +297,41 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ---------- Ibovespa (benchmark) — mesma brapi, guardado se indisponível ----------
+  // Sem série pública gratuita de índice no BCB; a brapi já é a fonte oficial
+  // de preços deste sistema. Falha aqui NUNCA derruba a coleta de ações.
+  let ibovespa_sync = "pulado";
+  try {
+    const resIbov = await fetch(`${BRAPI_BASE}/%5EBVSP?token=${brapiToken}`, { cache: "no-store" });
+    if (resIbov.ok) {
+      const jIbov = await resIbov.json();
+      const qIbov = jIbov?.results?.[0];
+      if (qIbov?.regularMarketPrice) {
+        const { error: errIbov } = await supabase.from("benchmarks_diarios").upsert(
+          {
+            indicador: "IBOVESPA",
+            data: dataPregaoSaoPaulo(qIbov.regularMarketTime),
+            valor: qIbov.regularMarketPrice,
+            fonte: "brapi",
+          },
+          { onConflict: "indicador,data" }
+        );
+        ibovespa_sync = errIbov ? `falhou ao gravar: ${errIbov.message}` : "ok";
+      } else {
+        ibovespa_sync = "sem preço na resposta (^BVSP pode não existir neste plano)";
+      }
+    } else {
+      ibovespa_sync = `HTTP ${resIbov.status} (^BVSP pode não existir neste plano)`;
+    }
+  } catch (e) {
+    ibovespa_sync = `falhou: ${String(e).slice(0, 120)}`;
+  }
+
   return NextResponse.json({
     coletados: ok.length,
     historico_gravado,
     fundamentos_sync,
+    ibovespa_sync,
     falhas,
     executado_em: new Date().toISOString(),
   });
