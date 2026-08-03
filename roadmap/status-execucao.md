@@ -1,6 +1,51 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~21h30 (Meu Dash reconstruído como terminal financeiro denso, 4 linhas, 1ª dobra sem scroll — no ar · Carteira + Saúde da Carteira mescladas em "Minha Carteira" — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~22h05 (Gráfico de Evolução do Patrimônio: linhas de CDI e IPCA que tinham sumido do gráfico — corrigidas e no ar; Ibovespa continua "—", motivo é falta de histórico coletado, não bug · Meu Dash reconstruído como terminal financeiro denso, 4 linhas, 1ª dobra sem scroll — no ar · Carteira + Saúde da Carteira mescladas em "Minha Carteira" — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+
+## NOVO (03/08 ~22h05): GRÁFICO DE PATRIMÔNIO — LINHAS DE CDI E IPCA SUMIDAS, DOIS BUGS DISTINTOS ENCONTRADOS E CORRIGIDOS ✅ NO AR
+Carlos reportou: "faltando a linha do CDI e a linha do ibov no gráfico".
+Investigação (SQL direto no Supabase, não suposição) achou DOIS problemas
+diferentes disfarçados de um só:
+
+**Bug #1 (afetava CDI, IPCA e Ibovespa igualmente) — data de entrada do
+benchmark nunca batia com a janela de preço.** `calcularSeriePatrimonio`
+busca o índice do benchmark na data de compra registrada da posição
+(`dataCompra`, dezembro/2025). Mas o índice só existe nas datas em que há
+preço de ação coletado (`precos_diarios`, que só começa em maio/2026 pra
+essa carteira) — `dataCompra` nunca era uma chave válida, então a
+simulação inteira ficava `null` pra sempre. Corrigido: a data de entrada
+do benchmark agora é ancorada no primeiro pregão da janela de preços
+disponível (nunca antes disso, pros dois lados) — não uma estimativa,
+é literalmente "a partir de quando os dois lados existem de verdade
+pra comparar". Commit `01f38ec` (já reportado antes desta atualização).
+
+**Bug #2 (só IPCA, mais sutil — achado ao verificar se o Bug #1 tinha
+resolvido tudo, e não tinha) — índice do IPCA não "nascia" no início da
+janela.** IPCA é publicado 1x por mês, sempre dia 1. Depois do Bug #1
+corrigido, CDI voltou (publica todo dia útil), mas IPCA continuou "—":
+a função `indiceAcumulado` só saía de `null` no primeiro dia em que
+existisse uma publicação EXATA — se a janela de preço começa dia 5 e a
+próxima publicação de IPCA só é dia 1 do mês seguinte, o índice ficava
+`null` por semanas, mesmo com meses de histórico de IPCA disponíveis
+antes da janela. Corrigido: para séries de variação (CDI/IPCA, nunca
+Ibovespa — que é nível, não variação, e não dá pra chutar sem uma
+observação real), o índice agora nasce em 1.0 no primeiro dia da janela
+mesmo sem publicação exata naquele dia ("ainda sem variação" é honesto;
+inventar uma variação não seria). 2 testes novos cobrindo os dois cenários
+reais. `npx tsc --noEmit` / `npx vitest run` (186/186) / `npm run build`
+limpos, commit `346d230`, verificado ao vivo em produção.
+
+**Resultado ao vivo, medido no DOM (não só visual):** CDI +3,3% e IPCA
++0,2% "desde o início" aparecem agora tanto no resumo quanto nas linhas
+reais do SVG do gráfico (path com pontos, não vazio). **Ibovespa continua
+"—" — e isso é CORRETO, não bug residual:** `benchmarks_diarios` tem
+exatamente 1 linha pra `IBOVESPA`, datada de hoje (03/08/2026) — a coleta
+do Ibovespa só existe via o cron diário de preços (usa a cotação `^BVSP`
+da brapi, sem token de fonte de backfill histórico configurado neste
+ambiente — ver `tools/coleta_benchmarks.py`). A linha do Ibovespa vai
+aparecer sozinha conforme os dias passam e a coleta diária acumula —
+nenhuma ação de código resolve isso, só tempo (ou uma fonte de backfill
+paga, que não existe hoje).
 
 ## NOVO (03/08 ~21h15): MINHA CARTEIRA — MESCLAGEM DE /CARTEIRA + /SAUDE-CARTEIRA ✅ NO AR
 Carlos mandou um mockup (dessa vez com números REAIS da carteira dele, não
