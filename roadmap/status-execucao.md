@@ -58,9 +58,10 @@ Saúde da Carteira mostram corretamente o estado "registre suas posições"),
 então o painel novo ainda não tem o que mostrar — é a primeira coisa da
 fila agora.
 
-140 testes (120 + 20 novos: 9 de patrimônio, 6 de Decision Feed, 5 de
-Saúde da Carteira), build limpo, verificado ao vivo em produção. Commits
-`bd1e8ca` (motor) e `ba65e7f` (aviso desatualizado na Carteira corrigido).
+140 testes nesta etapa (120 + 20 novos: 9 de patrimônio, 6 de Decision
+Feed, 5 de Saúde da Carteira; total sobe de novo com a Fase 1.5 abaixo),
+build limpo, verificado ao vivo em produção. Commits `bd1e8ca` (motor) e
+`ba65e7f` (aviso desatualizado na Carteira corrigido).
 
 **PIC 01 Fase 1.5 (mesma tarde, após "vai seguindo"): Diário ganha
 histórico de acertos/erros.** Item da spec — "guardar TODAS as decisões...
@@ -143,7 +144,7 @@ Sem mudanças hoje.
 20h coleta+sync (idempotente) · 20h30-35 motor · 20h58 bloco de fiação · 21h34 supervisão avisa o Carlos.
 
 ## FILA DO CARLOS
-1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. **Registrar posições REAIS em /carteira COM data de compra** — sem isso, o novo painel Meu Patrimônio (Alpha/drawdown/Sharpe) fica sem o que mostrar; é o item que mais destrava agora · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados em 03/08 (SBSP3, MULT3, AXIA3, EGIE3) · 15. (novo, PIC 01) decidir sobre Fluxo institucional (contratar fonte paga?) e sobre o texto/limite da "carteira Compounder" com pesos sugeridos — ambos batem na regra 7/CI · 16. (novo, PIC 01) quando quiser Replay histórico completo e Performance Attribution de verdade, avisar — precisa de uma peça de infraestrutura nova (snapshot diário dos motores + ledger de transações) antes de virar tela.
+1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. **Registrar posições REAIS em /carteira COM data de compra** — sem isso, o novo painel Meu Patrimônio (Alpha/drawdown/Sharpe) fica sem o que mostrar; é o item que mais destrava agora · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados em 03/08 (SBSP3, MULT3, AXIA3, EGIE3) · 15. (novo, PIC 01) decidir sobre Fluxo institucional (contratar fonte paga?) e sobre o texto/limite da "carteira Compounder" com pesos sugeridos — ambos batem na regra 7/CI · 16. (novo, PIC 01) quando quiser Replay histórico completo e Performance Attribution de verdade, avisar — precisa de uma peça de infraestrutura nova (snapshot diário dos motores + ledger de transações) antes de virar tela · 17. (novo, PIC 01, ainda sem resposta) Decision History já está no ar em /diario — mas hoje só existe 1 decisão registrada (ABEV3), então o histórico de acertos/erros ainda não tem volume pra dizer nada útil; quanto mais você registrar em /diario, mais essa peça vale.
 
 ## PRÓXIMOS
 Fase C: coletor IF.data/Bacen · SUSEP · perfis de sensibilidade macro · Carry Cash v3 · Sharpe/alpha da carteira. FDIE Fase 2, Compounder Fase 2 e Technical Fase 2 (hierarquia semanal/mensal, padrões gráficos, backtest) — todos gated em decisões do Carlos ou mais profundidade de dado coletado.
