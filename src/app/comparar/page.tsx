@@ -11,6 +11,7 @@ import { Zoom } from "@/components/Zoom";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
 import { escadaCarry, type CarryResultado, type DegrauCarry } from "@/lib/carry";
+import { calcularCompounder } from "@/lib/compounder/v1";
 import { modeloDe, ROTULO_MODELO } from "@/lib/setores";
 
 export const dynamic = "force-dynamic";
@@ -100,7 +101,7 @@ export default async function Comparar({
   let resumoExec: string[] = [];
 
   if (padrao.length >= 2) {
-    const [{ data: fundsRaw }, { data: scoresRaw }, { data: precosRaw }, { data: acoesRaw }] =
+    const [{ data: fundsRaw }, { data: scoresRaw }, { data: precosRaw }, { data: acoesRaw }, { data: fluxoRaw }] =
       await Promise.all([
         supabase
           .from("fundamentos")
@@ -120,10 +121,25 @@ export default async function Comparar({
           .order("data", { ascending: false })
           .limit(30),
         supabase.from("acoes_totais").select("ticker, qtd_acoes").in("ticker", padrao),
+        supabase
+          .from("fluxo_caixa")
+          .select("ticker, competencia, fonte, caixa_operacional, capex, dividendos_jcp, recompras")
+          .in("ticker", padrao)
+          .order("competencia", { ascending: false }),
       ]);
 
     const funds = (fundsRaw as Fund[]) ?? [];
     const porTicker = (t: string) => funds.filter((f) => f.ticker === t);
+    type FluxoRow = {
+      ticker: string;
+      competencia: string;
+      fonte: string;
+      caixa_operacional: number | null;
+      capex: number | null;
+      dividendos_jcp: number | null;
+      recompras: number | null;
+    };
+    const fluxoPorTicker = (t: string) => ((fluxoRaw as FluxoRow[]) ?? []).filter((f) => f.ticker === t);
     const scoreDe = (t: string) =>
       ((scoresRaw as { ticker: string; qualidade: number | null; valuation: number | null; risco: number | null; score_final: number; confianca: string }[]) ?? [])
         .find((s) => s.ticker === t);
@@ -203,10 +219,33 @@ export default async function Comparar({
       });
       const carry = escada[0].resultado;
 
+      const fluxo = fluxoPorTicker(t);
+      const dividendosJcpLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.dividendos_jcp) : null;
+      const caixaOperacionalLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.caixa_operacional) : null;
+      const capexLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.capex) : null;
+      const recomprasLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.recompras) : null;
+      const compounder = calcularCompounder({
+        ticker: t,
+        receitaAnoAtual: dfps[0]?.receita_liquida ?? null,
+        receitaAnoAnterior: dfps[1]?.receita_liquida ?? null,
+        lucroAnoAtual: dfps[0]?.lucro_liquido ?? null,
+        lucroAnoAnterior: dfps[1]?.lucro_liquido ?? null,
+        roic4tri: roic4,
+        lucroLtm,
+        dividendosJcpLtm,
+        caixaOperacionalLtm,
+        capexLtm,
+        marketCap: mc,
+        margensTrimestrais: margensTri,
+        recomprasLtm,
+        ehFinanceira,
+      });
+
       return {
         ticker: t,
         carry,
         escada,
+        compounder,
         roic4,
         roe: lucroLtm !== null && pl && pl > 0 ? lucroLtm / pl : null,
         margemBruta: rec?.margem_bruta != null ? Number(rec.margem_bruta) : null,
@@ -262,6 +301,28 @@ export default async function Comparar({
       { bloco: "Nota Encorpei", nome: "Valuation", valores: v((c) => c.valuation), formato: "nota", melhor: "maior" },
       { bloco: "Nota Encorpei", nome: "Risco (maior = mais sólida)", valores: v((c) => c.risco), formato: "nota", melhor: "maior" },
       { bloco: "Nota Encorpei", nome: "Nota final", valores: v((c) => c.notaFinal), formato: "nota", melhor: "maior" },
+      {
+        bloco: "Compounders (categoria própria — nunca é Qualidade/Value)",
+        nome: "Compounder Score",
+        valores: v((c) => c.compounder.score),
+        formato: "nota",
+        melhor: "maior",
+        nota: `componentes disponíveis variam por empresa — ver /compounders/[ticker] para o detalhe`,
+      },
+      {
+        bloco: "Compounders (categoria própria — nunca é Qualidade/Value)",
+        nome: "Growth Quality (1 ano — ainda sem CAGR de vários anos)",
+        valores: v((c) => c.compounder.componentes.find((x) => x.id === "growth_quality")?.valor ?? null),
+        formato: "nota",
+        melhor: "maior",
+      },
+      {
+        bloco: "Compounders (categoria própria — nunca é Qualidade/Value)",
+        nome: "Capacidade de reinvestimento",
+        valores: v((c) => c.compounder.componentes.find((x) => x.id === "reinvestimento")?.valor ?? null),
+        formato: "nota",
+        melhor: "maior",
+      },
     ];
 
     // ---------- resumo executivo POR REGRAS (IA nenhuma; template dos fatos) ----------
