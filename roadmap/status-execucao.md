@@ -1,11 +1,69 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~19h45 (Carry Engine: níveis 2-3 (Growth/Cash) destravados, Cash v3 novo — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~20h15 (ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
 
 ## ESTADO DAS FASES
 - Fase 0 ✅ · 1 ✅ · 2.5 ✅ · 3 ✅ · Fase 7 adiantada
 - Fase 2: 11 teses RATIFICADAS ✅ · Fase 4 ✅ · Fase 5 em curso (1ª decisão ABEV3)
-- Segurança ✅ · Qualidade ✅ (155 testes + CI)
+- Segurança ✅ · Qualidade ✅ (160 testes + CI)
+
+## NOVO (03/08 ~20h15): ENCORPEI RESEARCH LAB (ERL) — FASE 1: ARQUITETURA + GOVERNANÇA ✅ NO AR (decisão registrada em `roadmap/erl-fase1-v1.md`)
+Carlos mandou a especificação completa do ERL (19 camadas: banco
+histórico temporal, Time Machine sem look-ahead bias, Feature Store,
+motores de descoberta de padrão/poder preditivo/probabilidade,
+otimização de pesos, detecção de regime, etc. — filosofia: "nunca
+recomenda, nunca altera produção sozinho, tudo com aprovação humana").
+
+**Premissa que testei antes de construir:** toda a promessa do ERL
+("82% das vezes", "score preditivo 91") só vale com profundidade
+histórica real — e hoje o banco só tem 2024-2026 de fundamentos, dias
+de preço/DFC/composição de capital. Rodar motores de padrão/
+probabilidade sobre isso produziria números com CARA de rigor
+estatístico sobre amostra pequena demais — a caixa preta que a própria
+spec do Carlos proíbe.
+
+**Investigado ao vivo antes de decidir o escopo:** CVM tem DFP/ITR de
+**2010 a 2026, grátis**, no mesmo formato que o parser atual já lê (que
+só usa 2024-2025 por escolha, não por limite da fonte) — expandir é
+viável, mas precisa de validação antes de confiar (não repetir o erro
+Bradesco/Sabesp). BCB SGS (CDI/IPCA) tem décadas de histórico público,
+mesma situação. brapi (preços) e fontes pagas de Fluxo/Consenso ficam
+em aberto — mesma decisão pendente do PIC 01 (item 15/17 da fila).
+
+**Fase 1 construída e aplicada — só arquitetura, não o laboratório em
+si:** migração 019, schema `erl` isolado do `public` (produção) —
+cumprindo "nunca compartilhar banco com o Production Engine" por
+isolamento de schema no MESMO projeto Supabase (não um projeto novo,
+sem custo extra sem necessidade comprovada). 3 tabelas: `erl.hipoteses`
+(Research Notebook, nunca DELETE), `erl.aprovacoes` (Research Approval
+— nenhuma descoberta vira mudança de produção sem aprovação à mão,
+construído ANTES de qualquer motor de descoberta existir, de
+propósito), `erl.cobertura_dados` (8 fontes catalogadas com
+profundidade real, verificado 8/8 linhas após aplicar).
+
+**Deliberadamente fora desta fase:** expandir o backfill de verdade
+(precisa validar o parser contra anos antigos primeiro), Time Machine,
+Feature Store, e as camadas 4-14 inteiras (Pattern Discovery,
+Predictive Power, Probability/Evidence Engine etc.) — todas dependem
+de profundidade histórica que ainda não existe. Próximos passos
+concretos documentados no doc, em ordem.
+
+vitest 160/160 (sem mudança de código TS — só migração SQL + doc),
+migração aplicada e verificada direto no Supabase (SQL Editor via
+Chrome), commit `4aa8450`.
+
+## NOVO (03/08 ~20h): CARRY — LEGENDA DOS 5 NÍVEIS + LEITURA AUTOMÁTICA GROWTH × CASH ✅ NO AR
+Carlos viu WEGE3 (Growth +21,6% vs Cash +2,4% — diferença enorme) e
+INTB3 (Growth +11,9% vs Cash +33%) e pediu uma legenda explicando cada
+nível e "cenário". Construído: `LEGENDA_CARRY` em `/comparar` (texto
+fixo, 5 níveis, rótulo de cenário — conservador/otimista/realista/
+pendente/destino) + `src/lib/carry/leitura.ts` (novo, testado): compara
+Growth × Cash por REGRA — growth bem acima do cash vira aviso explícito
+("lucro alto no papel, ainda não virou caixa na mesma proporção"), cash
+igual ou acima do growth vira confirmação. Verificado ao vivo: WEGE3
+mostra o aviso âmbar, INTB3 mostra a confirmação verde, batendo com os
+números do print do Carlos. 5 testes novos (160 no total), commit
+`57fb87a`.
 
 ## NOVO (03/08 ~19h45): CARRY ENGINE — NÍVEIS 2 E 3 DESTRAVADOS (pergunta do Carlos: "que dado falta buscar?") ✅ NO AR
 Carlos mandou print do `/comparar` (WEGE3) mostrando os 4 níveis do Carry
@@ -193,7 +251,7 @@ Sem mudanças hoje.
 20h coleta+sync (idempotente) · 20h30-35 motor · 20h58 bloco de fiação · 21h34 supervisão avisa o Carlos.
 
 ## FILA DO CARLOS
-1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. **Registrar posições REAIS em /carteira COM data de compra** — sem isso, o novo painel Meu Patrimônio (Alpha/drawdown/Sharpe) fica sem o que mostrar; é o item que mais destrava agora · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados em 03/08 (SBSP3, MULT3, AXIA3, EGIE3) · 15. (novo, PIC 01) decidir sobre Fluxo institucional (contratar fonte paga?) e sobre o texto/limite da "carteira Compounder" com pesos sugeridos — ambos batem na regra 7/CI · 16. (novo, PIC 01) quando quiser Replay histórico completo e Performance Attribution de verdade, avisar — precisa de uma peça de infraestrutura nova (snapshot diário dos motores + ledger de transações) antes de virar tela · 17. (novo, PIC 01, ainda sem resposta) Decision History já está no ar em /diario — mas hoje só existe 1 decisão registrada (ABEV3), então o histórico de acertos/erros ainda não tem volume pra dizer nada útil; quanto mais você registrar em /diario, mais essa peça vale.
+1. ~~Ratificar 11 teses~~ ✅ · 2. Ratificar os 13 modelos setoriais · 3. ~~Decidir sobre a coluna ROIC/Dív·Patr de financeiras no Radar~~ ✅ corrigido hoje (era bug, não decisão de produto) · 4. Investigar a margem SUZB3 (parser) · 5. Decidir texto da "carteira Compounder" (regra 7/CI) · 6. **Registrar posições REAIS em /carteira COM data de compra** — sem isso, o novo painel Meu Patrimônio (Alpha/drawdown/Sharpe) fica sem o que mostrar; é o item que mais destrava agora · 7. Registrar decisões (2/3) · 8. Resend keys · 9. Reconectar Supabase MCP NA ORG ENCORPEITECH · 10. Auth · 11. (opcional) ANTHROPIC_API_KEY · 12. (opcional) API paga para FDIE multi-fonte · 13. quando existir fonte de dado profissional, avisar pra eu ligar o `MarketDataProvider` de verdade · 14. considerar se vale a pena checar periodicamente (trimestral?) se `acoes_totais` está divergindo de outros tickers além dos 4 achados em 03/08 (SBSP3, MULT3, AXIA3, EGIE3) · 15. (novo, PIC 01) decidir sobre Fluxo institucional (contratar fonte paga?) e sobre o texto/limite da "carteira Compounder" com pesos sugeridos — ambos batem na regra 7/CI · 16. (novo, PIC 01) quando quiser Replay histórico completo e Performance Attribution de verdade, avisar — precisa de uma peça de infraestrutura nova (snapshot diário dos motores + ledger de transações) antes de virar tela · 17. (novo, PIC 01, ainda sem resposta) Decision History já está no ar em /diario — mas hoje só existe 1 decisão registrada (ABEV3), então o histórico de acertos/erros ainda não tem volume pra dizer nada útil; quanto mais você registrar em /diario, mais essa peça vale · 18. (novo, ERL) checar no dashboard da sua conta brapi qual a profundidade de histórico de preço o plano atual permite (dias? anos?) — sem isso não dá pra saber se o Historical Database do Research Lab consegue ter candles de verdade ou só a partir de agora · 19. (novo, ERL — mesma decisão do item 15) Fluxo institucional e consenso de analistas também bloqueiam 2 dos fatores do Research Lab (camada 6), não só o Master Engine do PIC 01 — é a mesma fonte paga que resolveria os dois de uma vez.
 
 ## PRÓXIMOS
 Fase C: coletor IF.data/Bacen · SUSEP · perfis de sensibilidade macro · Sharpe/alpha da carteira. Carry Allocation (v4)/Retorno Intrínseco (v5) — aguardam a série de composição de capital acumular (começou 02/08/2026). FDIE Fase 2, Compounder Fase 2 e Technical Fase 2 (hierarquia semanal/mensal, padrões gráficos, backtest) — todos gated em decisões do Carlos ou mais profundidade de dado coletado.
