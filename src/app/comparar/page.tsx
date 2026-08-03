@@ -11,6 +11,7 @@ import { Zoom } from "@/components/Zoom";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
 import { escadaCarry, type CarryResultado, type DegrauCarry } from "@/lib/carry";
+import { modeloDe, ROTULO_MODELO } from "@/lib/setores";
 
 export const dynamic = "force-dynamic";
 
@@ -342,6 +343,21 @@ export default async function Comparar({
         <p className="text-slate-500">Escolha ao menos 2 empresas para comparar.</p>
       ) : (
         <>
+          {/* aviso de modelos de negócio diferentes (Sector Intelligence) */}
+          {(() => {
+            const modelos = [...new Set(padrao.map((t) => modeloDe(t)).filter(Boolean))];
+            if (modelos.length <= 1) return null;
+            return (
+              <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-2.5 text-[12px] leading-relaxed text-amber-200/90">
+                Você está comparando modelos de negócio diferentes (
+                {padrao.map((t) => `${t}: ${ROTULO_MODELO[modeloDe(t)!]}`).join(" · ")}
+                ). Alguns indicadores não são diretamente comparáveis — bancos e seguradoras
+                não têm dívida líquida nem ROIC no sentido industrial (aparecem como “—”), e a
+                comparação mais justa é dentro do mesmo setor. Motores especializados por setor
+                estão no roadmap (docs/sector-intelligence.md).
+              </div>
+            );
+          })()}
           {/* cards de nota */}
           <div className={`grid gap-3 ${cards.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
             {cards.map((r) => (
@@ -354,7 +370,15 @@ export default async function Comparar({
                   <span className="text-2xl font-bold text-emerald-300">{r.nota ?? "—"}</span>
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500">
-                  {r.nome} · {r.notaOficial ? "nota oficial" : "prévia pelas réguas v1"} · confiança {r.confianca}
+                  {r.nome}
+                  {modeloDe(r.ticker) && (
+                    <span className="ml-2 rounded-full border border-white/10 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wider text-slate-400">
+                      {ROTULO_MODELO[modeloDe(r.ticker)!]}
+                    </span>
+                  )}
+                  <span className="ml-2">
+                    {r.notaOficial ? "nota oficial" : "prévia v1"} · confiança {r.confianca}
+                  </span>
                 </p>
               </div>
             ))}
