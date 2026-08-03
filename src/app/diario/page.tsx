@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { Shell } from "@/components/Shell";
+import { avaliarDecisoes, ROTULO_JULGAMENTO, type DecisaoEntrada, type Julgamento } from "@/lib/decision-history";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,12 @@ const DECISAO_UI: Record<string, { rotulo: string; cor: string }> = {
   reduzi: { rotulo: "Reduzi", cor: "text-amber-300 bg-amber-500/10 border-amber-500/30" },
   mantive: { rotulo: "Mantive", cor: "text-sky-300 bg-sky-500/10 border-sky-500/30" },
   observei: { rotulo: "Só observei", cor: "text-slate-300 bg-white/5 border-white/15" },
+};
+const JULGAMENTO_COR: Record<Julgamento, string> = {
+  a_favor: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  contra: "text-red-300 bg-red-500/10 border-red-500/30",
+  neutro: "text-slate-400 bg-white/5 border-white/10",
+  indisponivel: "text-slate-500 bg-white/[0.02] border-white/5",
 };
 
 function fmtData(d: string) {
@@ -102,6 +109,31 @@ export default async function Diario() {
   ]);
   const decisoes = (decisoesRaw as Decisao[]) ?? [];
   const tickers = ((tesesRaw as { ticker: string }[]) ?? []).map((t) => t.ticker);
+
+  // ---------- Decision History (PIC 01): "acertou/errou" — preço, nunca a tese ----------
+  const tickersDecisoes = [...new Set(decisoes.map((d) => d.ticker))];
+  const { data: precosRaw } =
+    tickersDecisoes.length > 0
+      ? await supabase
+          .from("precos_diarios")
+          .select("ticker, data, fechamento")
+          .in("ticker", tickersDecisoes)
+          .order("data", { ascending: false })
+      : { data: [] as { ticker: string; fechamento: number }[] };
+  const precoAtualPorTicker = new Map<string, number>();
+  for (const p of (precosRaw as { ticker: string; fechamento: number }[]) ?? []) {
+    if (!precoAtualPorTicker.has(p.ticker)) precoAtualPorTicker.set(p.ticker, Number(p.fechamento));
+  }
+  const entradasAvaliacao: DecisaoEntrada[] = decisoes.map((d) => ({
+    id: d.id,
+    ticker: d.ticker,
+    decisao: d.decisao as DecisaoEntrada["decisao"],
+    justificativa: d.justificativa,
+    criadoEm: d.criado_em,
+    precoNaDecisao: d.contexto?.preco ?? null,
+  }));
+  const decisoesAvaliadas = avaliarDecisoes(entradasAvaliacao, precoAtualPorTicker, new Date().toISOString());
+  const avaliacaoPorId = new Map(decisoesAvaliadas.map((d) => [d.id, d]));
 
   return (
     <Shell
@@ -187,6 +219,7 @@ export default async function Diario() {
             )}
             {decisoes.map((d) => {
               const ui = DECISAO_UI[d.decisao] ?? DECISAO_UI.observei;
+              const av = avaliacaoPorId.get(d.id);
               return (
                 <div key={d.id} className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
                   <div className="flex items-center justify-between">
@@ -212,6 +245,17 @@ export default async function Diario() {
                         <>preço R$ {Number(d.contexto.preco).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</>
                       )}
                     </p>
+                  )}
+                  {av && av.julgamento !== "indisponivel" && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className={`rounded-full border px-2 py-0.5 text-[10.5px] ${JULGAMENTO_COR[av.julgamento]}`}>
+                        {ROTULO_JULGAMENTO[av.julgamento]}
+                        {av.variacaoPct !== null && (
+                          <> · {av.variacaoPct >= 0 ? "+" : ""}{(av.variacaoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</>
+                        )}
+                        {!av.confiavel && " · cedo p/ julgar"}
+                      </span>
+                    </div>
                   )}
                 </div>
               );
