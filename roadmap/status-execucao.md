@@ -1,11 +1,11 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~19h (PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~19h20 (PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
 
 ## ESTADO DAS FASES
 - Fase 0 ✅ · 1 ✅ · 2.5 ✅ · 3 ✅ · Fase 7 adiantada
 - Fase 2: 11 teses RATIFICADAS ✅ · Fase 4 ✅ · Fase 5 em curso (1ª decisão ABEV3)
-- Segurança ✅ · Qualidade ✅ (140 testes + CI)
+- Segurança ✅ · Qualidade ✅ (148 testes + CI)
 
 ## NOVO (03/08 ~19h): PIC 01 FASE 1 — ENCORPEI VIRA PLATAFORMA DE PATRIMÔNIO ✅ NO AR (decisão registrada em `roadmap/pic01-patrimonio-v1.md`)
 Carlos mandou a especificação completa "PIC 01" (~20 módulos: Master
@@ -61,6 +61,24 @@ fila agora.
 140 testes (120 + 20 novos: 9 de patrimônio, 6 de Decision Feed, 5 de
 Saúde da Carteira), build limpo, verificado ao vivo em produção. Commits
 `bd1e8ca` (motor) e `ba65e7f` (aviso desatualizado na Carteira corrigido).
+
+**PIC 01 Fase 1.5 (mesma tarde, após "vai seguindo"): Diário ganha
+histórico de acertos/erros.** Item da spec — "guardar TODAS as decisões...
+resultado posterior, acertou, errou" — sem precisar de infraestrutura nova
+(reusa a tabela `decisoes`, imutável desde a migração 007, que já guarda a
+foto do momento: score, status da tese, preço). Regra: julga se o PREÇO se
+moveu a favor/contra desde a decisão — nunca se "a tese continua boa".
+Mantive/observei nunca recebem julgamento direcional (sem direção
+implícita). Antes de 30 dias, aparece marcado "cedo p/ julgar". Sem preço →
+"indisponível", nunca inventa. **Decisão deliberada de não construir
+agora:** a peça de infraestrutura de snapshot diário (que destravaria
+Replay/Performance Attribution, item 16 da fila) colide com a sessão
+autônoma já agendada pra hoje 20h58 BRT (`trig_015sisPqJfmZarM7VmKMue1b`,
+que mexe no mesmo motor/rota) — esperando ela terminar antes de tocar
+nisso. 8 testes novos (148 no total), verificado ao vivo: decisão "ABEV3 —
+só observei" já registrada por você aparece corretamente como "Neutro"
+(nunca direcional). Commit `eca1462`. Detalhe completo em
+`roadmap/pic01-patrimonio-v1.md`.
 
 ## NOVO (03/08 ~18h): AUDITORIA DE DADOS — dívida/ROIC de bancos + valor de mercado do Sabesp ✅ CORRIGIDO E NO AR
 Carlos reportou dois problemas concretos, com print do Radar: "Bradesco não tem dívida, aí mostra com muita dívida" e "Sabesp não tem os números batendo com a realidade". Investigação confirmou os dois, e achou que o mesmo padrão de bug se repetia em 4 lugares do sistema — incluindo o motor OFICIAL que grava nota imutável.

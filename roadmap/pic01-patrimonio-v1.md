@@ -109,3 +109,35 @@ Patrimônio v1 (`src/lib/patrimonio.ts`), Decision Feed v1
 (`src/lib/decision-feed.ts`), Portfolio Health v1
 (`src/lib/portfolio-health.ts`) — mesma regra do resto do sistema: mudar
 fórmula ou peso é nova versão, nunca editar a v1 por baixo.
+
+## Fase 1.5 — Decision History (03/08/2026)
+
+Depois do "vai seguindo", o próximo passo natural seria a infraestrutura de
+snapshot diário (Carry/Confluence gravados dia a dia — o que destrava
+Replay e Performance Attribution, listados acima como Fase 2). **Não
+construí isso agora**: descobri, checando as tarefas automáticas já
+agendadas, que uma sessão autônoma dispara hoje às 20:58 (horário de
+Brasília) e vai mexer exatamente nesse mecanismo (`/api/teses/avaliar`,
+trocar pro `calcularScorePorModelo`, gravar `carry_score` diário). Construir
+a mesma coisa em paralelo colidiria com esse trabalho já agendado — decidi
+esperar essa sessão terminar antes de tocar nesse motor.
+
+Em vez disso, construí uma peça do PIC 01 que não depende disso: **"Guardar
+TODAS as decisões... Resultado posterior. Acertou. Errou."**
+(`src/lib/decision-history.ts`, 8 testes). O Diário já guardava tudo que a
+spec pedia — data, empresa, motivo, e a foto do que o sistema dizia no
+momento (score, status da tese, preço) — de forma imutável desde a
+migração 007. Faltava só julgar o resultado depois. A regra:
+
+- Julga se o **PREÇO** se moveu a favor ou contra a decisão — nunca se "a
+  tese continua boa" (comprar uma ótima empresa pode errar 3 meses e
+  acertar 3 anos; isso fica explícito no texto de cada julgamento).
+- "Mantive"/"observei" **nunca** recebem julgamento direcional (essas duas
+  não têm direção implícita) — sempre neutro, mesmo com preço disparando.
+- Sem preço na decisão ou sem preço atual → "indisponível", nunca inventa.
+- Antes de 30 dias, o julgamento aparece marcado "cedo p/ julgar" (ruído de
+  curto prazo pesa mais que sinal nesse intervalo).
+
+Já no ar em `/diario`. Verificado ao vivo: a decisão "ABEV3 — só observei"
+do Carlos aparece corretamente como "Neutro" (não direcional), com o aviso
+de que ainda é cedo.
