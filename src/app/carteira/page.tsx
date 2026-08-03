@@ -341,7 +341,7 @@ export default async function Carteira() {
             rotulo="Confluence da carteira"
             valor={confluenciaCarteira.valor !== null ? Math.round(confluenciaCarteira.valor).toString() : "—"}
             cor={COR_CONVICCAO[confluenciaCarteira.conviccao]}
-            nota={`${ROTULO_CONVICCAO[confluenciaCarteira.conviccao]} · Convicção geral`}
+            nota={`${ROTULO_CONVICCAO[confluenciaCarteira.conviccao]} da carteira`}
           />
         </div>
         <div className="rounded-[18px] border border-white/[0.06] bg-white/[0.03] px-4 py-3">
