@@ -29,9 +29,10 @@ jobs:
         working-directory: .
         env:
           PYTHONPATH: tools
-      - run: |
+      - if: always()
+        run: |
           git config user.name "encorpei-bot"
           git config user.email "actions@github.com"
-          git add tools/ipe_relatorio.md
+          git add -f tools/ipe_relatorio.md 2>/dev/null || echo "sem relatório"
           git add supabase/migrations/010_seed_comunicados.sql 2>/dev/null || true
           git diff --cached --quiet || (git commit -m "IPE: comunicações oficiais atualizadas (automático)" && git push)

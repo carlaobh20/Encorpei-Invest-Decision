@@ -163,4 +163,15 @@ on conflict (ticker, protocolo) do nothing;
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:  # noqa: BLE001 — o traceback vira relatório auditável
+        import traceback
+
+        rel.append("\n## ERRO NA EXECUÇÃO\n")
+        rel.append("```")
+        rel.append(traceback.format_exc())
+        rel.append("```")
+        with open("tools/ipe_relatorio.md", "w") as f:
+            f.write("\n".join(rel))
+        raise
