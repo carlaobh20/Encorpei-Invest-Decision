@@ -14,6 +14,15 @@ import type { PontoPatrimonio } from "@/lib/patrimonio";
  * uma série (CDI/IPCA/Ibovespa) que esteja null nos pontos visíveis
  * simplesmente não desenha linha para ela nesse trecho — nunca interpola
  * um valor que o motor não calculou.
+ *
+ * Aspect ratio do viewBox (reconstrução "terminal financeiro", 03/08/2026):
+ * o card do gráfico na home agora tem ~280-320px de altura total (era
+ * livre antes) — como o SVG escala por `viewBox` num `<div>` com `w-full`,
+ * a altura renderizada é sempre `largura_do_container × (H/W)`. H foi
+ * reduzido de 300 para 230 (W continua 900, ~3,9:1 em vez de 3:1) para que,
+ * numa coluna de 70% de largura de um monitor comum, a área plotada em si
+ * fique perto de 280-320px já contando as barras de período/legenda acima
+ * e o resumo de rentabilidade abaixo.
  */
 
 type Serie = "valorCarteira" | "cdiSimulado" | "ipcaSimulado" | "ibovespaSimulado";
@@ -36,9 +45,9 @@ const PERIODOS: { rotulo: string; meses: number | null }[] = [
 ];
 
 const W = 900;
-const H = 300;
+const H = 230;
 const PADX = 4;
-const PADY = 14;
+const PADY = 12;
 
 function subtrairMeses(dataISO: string, meses: number): string {
   const d = new Date(dataISO + "T00:00:00Z");
@@ -170,7 +179,7 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
           antiga registrada. Volte quando houver 2 ou mais pregões.
         </p>
       ) : (
-        <div className="relative mt-4">
+        <div className="relative mt-2">
           <svg
             key={periodo.rotulo}
             viewBox={`0 0 ${W} ${H}`}
@@ -264,19 +273,19 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap gap-x-7 gap-y-2 border-t border-white/5 pt-3">
+      <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1.5 border-t border-white/5 pt-2">
         {SERIES.map((s) => {
           const r = n >= 2 ? rentAcumulada(s.chave, n - 1) : null;
           return (
             <div key={s.chave}>
               <p
-                className={`font-mono text-[15px] font-semibold ${
+                className={`font-mono text-[13px] font-semibold ${
                   r === null ? "text-slate-600" : r >= 0 ? "text-emerald-400" : "text-red-400"
                 }`}
               >
                 {r !== null ? pctFmt(r) : "—"}
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">
+              <p className="text-[9px] uppercase tracking-wider text-slate-500">
                 {s.rotulo} · {periodo.rotulo}
               </p>
             </div>

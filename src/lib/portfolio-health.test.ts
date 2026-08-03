@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { calcularSaudeCarteira, confluenciaMediaPonderada, type LinhaSaude } from "./portfolio-health";
+import { calcularSaudeCarteira, confluenciaMediaPonderada, montarLinhasSaude, type LinhaSaude } from "./portfolio-health";
+import type { LinhaCarteira } from "./carteira";
+import type { LinhaRadar } from "./radar";
+import type { LinhaCompounder } from "./compounder-dados";
 
 describe("calcularSaudeCarteira", () => {
   it("carteira igualmente distribuída em 4 papéis: HHI = 0.25 (limite), rótulo alta", () => {
@@ -56,6 +59,45 @@ describe("calcularSaudeCarteira", () => {
     ];
     const r = calcularSaudeCarteira(linhas);
     expect(r.alocacaoPorModelo).toEqual([{ rotulo: "industrial", pct: 1 }]);
+  });
+});
+
+describe("montarLinhasSaude", () => {
+  it("junta peso/modelo da carteira com carry/ROIC/EY do Radar e sensibilidade do Compounder", () => {
+    const carteira = [
+      { ticker: "WEGE3", peso: 0.6, modelo: "industrial" },
+      { ticker: "ITUB4", peso: 0.4, modelo: "banco" },
+    ] as unknown as LinhaCarteira[];
+    const radar = [
+      { ticker: "WEGE3", carryReal: 0.09, roic4: 0.22, ey: 0.07 },
+      { ticker: "ITUB4", carryReal: 0.11, roic4: null, ey: 0.15 },
+    ] as unknown as LinhaRadar[];
+    const compounder = [
+      { ticker: "WEGE3", sensibilidadeSelic: { categoria: "baixa", explicacao: "x" } },
+    ] as unknown as LinhaCompounder[];
+
+    const linhas = montarLinhasSaude(carteira, radar, compounder);
+    expect(linhas).toHaveLength(2);
+    expect(linhas[0]).toEqual({
+      ticker: "WEGE3",
+      peso: 0.6,
+      modelo: "Industrial",
+      carryReal: 0.09,
+      roic4: 0.22,
+      earningsYield: 0.07,
+      sensibilidadeSelic: "baixa",
+    });
+    // ITUB4 não tem entrada no Compounder acima → sensibilidade fica null, nunca inventada
+    expect(linhas[1].sensibilidadeSelic).toBeNull();
+    expect(linhas[1].roic4).toBeNull();
+  });
+
+  it("descarta posições sem peso calculável (peso null) — corte honesto", () => {
+    const carteira = [
+      { ticker: "SEM_PRECO", peso: null, modelo: null },
+    ] as unknown as LinhaCarteira[];
+    const linhas = montarLinhasSaude(carteira, [], []);
+    expect(linhas).toHaveLength(0);
   });
 });
 

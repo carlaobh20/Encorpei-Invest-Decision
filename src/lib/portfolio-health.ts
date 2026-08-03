@@ -11,6 +11,10 @@
 
 import type { CategoriaSensibilidade } from "./compounder/sensibilidade-juros";
 import { classificarConviccao, type Conviccao } from "./confluencia";
+import type { LinhaCarteira } from "./carteira";
+import type { LinhaRadar } from "./radar";
+import type { LinhaCompounder } from "./compounder-dados";
+import { ROTULO_MODELO } from "./setores";
 
 export type LinhaSaude = {
   ticker: string;
@@ -96,6 +100,37 @@ export function confluenciaMediaPonderada(
     total: linhas.length,
     conviccao: classificarConviccao(r.valor, coberturaFrac),
   };
+}
+
+/**
+ * Assembly compartilhado — traduz o que `/carteira` (tabela de posições) e
+ * o Radar/Compounder já calculam por ticker para o formato que
+ * `calcularSaudeCarteira` espera. Extraído em 03/08/2026 para a home
+ * ("Meu Dash") também montar Saúde da Carteira/Carry médio sem duplicar
+ * este mapeamento — usado por src/app/carteira/page.tsx e src/app/page.tsx.
+ */
+export function montarLinhasSaude(
+  linhasCarteira: LinhaCarteira[],
+  radarLinhas: LinhaRadar[],
+  compounderLinhas: LinhaCompounder[]
+): LinhaSaude[] {
+  const radarPorTicker = new Map(radarLinhas.map((l) => [l.ticker, l]));
+  const compPorTicker = new Map(compounderLinhas.map((l) => [l.ticker, l]));
+  return linhasCarteira
+    .filter((l) => l.peso !== null)
+    .map((l) => {
+      const r = radarPorTicker.get(l.ticker);
+      const comp = compPorTicker.get(l.ticker);
+      return {
+        ticker: l.ticker,
+        peso: l.peso as number,
+        modelo: l.modelo ? ROTULO_MODELO[l.modelo] : null,
+        carryReal: r?.carryReal ?? null,
+        roic4: r?.roic4 ?? null,
+        earningsYield: r?.ey ?? null,
+        sensibilidadeSelic: comp?.sensibilidadeSelic.categoria ?? null,
+      };
+    });
 }
 
 export function calcularSaudeCarteira(linhas: LinhaSaude[]): SaudeCarteira {

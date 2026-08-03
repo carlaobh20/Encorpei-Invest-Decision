@@ -9,7 +9,7 @@ import { consolidarCarteira, notaPonderada, type Posicao } from "@/lib/carteira"
 import { calcularRadar } from "@/lib/radar";
 import { calcularCompounders } from "@/lib/compounder-dados";
 import { calcularConfluencias } from "@/lib/confluencia-dados";
-import { calcularSaudeCarteira, confluenciaMediaPonderada, type LinhaSaude } from "@/lib/portfolio-health";
+import { calcularSaudeCarteira, confluenciaMediaPonderada, montarLinhasSaude } from "@/lib/portfolio-health";
 import { calcularPatrimonio } from "@/lib/patrimonio-dados";
 import { ROTULO_MODELO } from "@/lib/setores";
 import { ROTULO_SENSIBILIDADE } from "@/lib/compounder/sensibilidade-juros";
@@ -273,8 +273,6 @@ export default async function Carteira() {
   const statusTese = new Map(
     (((tesesRaw as { ticker: string; status: string }[]) ?? [])).map((t) => [t.ticker, t.status])
   );
-  const radarPorTicker = new Map(radarLinhas.map((l) => [l.ticker, l]));
-  const compPorTicker = new Map(compounderLinhas.map((l) => [l.ticker, l]));
   const confluenciaPorTicker = new Map(confluenciaLinhas.map((l) => [l.ticker, l.resultado]));
 
   const c = consolidarCarteira(posicoes, precoPorTicker);
@@ -285,22 +283,8 @@ export default async function Carteira() {
   const corResultado = (v: number | null) =>
     v === null ? "text-slate-500" : v >= 0 ? "text-emerald-300" : "text-red-300";
 
-  // ---------- Saúde da Carteira (assembly idêntico ao que existia em /saude-carteira) ----------
-  const linhasSaude: LinhaSaude[] = c.linhas
-    .filter((l) => l.peso !== null)
-    .map((l) => {
-      const r = radarPorTicker.get(l.ticker);
-      const comp = compPorTicker.get(l.ticker);
-      return {
-        ticker: l.ticker,
-        peso: l.peso as number,
-        modelo: l.modelo ? ROTULO_MODELO[l.modelo] : null,
-        carryReal: r?.carryReal ?? null,
-        roic4: r?.roic4 ?? null,
-        earningsYield: r?.ey ?? null,
-        sensibilidadeSelic: comp?.sensibilidadeSelic.categoria ?? null,
-      };
-    });
+  // ---------- Saúde da Carteira (assembly compartilhado com a home — ver portfolio-health.ts) ----------
+  const linhasSaude = montarLinhasSaude(c.linhas, radarLinhas, compounderLinhas);
   const saude = linhasSaude.length > 0 ? calcularSaudeCarteira(linhasSaude) : null;
 
   const volatilidade = patrimonio?.resultado.volatilidadeAnualizada ?? null;
