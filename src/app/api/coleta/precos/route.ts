@@ -249,11 +249,14 @@ export async function GET(req: NextRequest) {
       if (hist.length > 0) {
         const linhas = hist
           .filter((h: { date?: number; close?: number }) => h?.date && h?.close)
-          .map((h: { date: number; close: number; volume?: number }) => ({
+          .map((h: { date: number; close: number; volume?: number; open?: number; high?: number; low?: number }) => ({
             ticker,
             data: dataPregaoSaoPaulo(new Date(h.date * 1000).toISOString()),
             fechamento: h.close,
             volume: h.volume ?? null,
+            abertura: h.open ?? null,
+            maxima: h.high ?? null,
+            minima: h.low ?? null,
             fonte: "brapi_historico",
           }));
         if (linhas.length > 0) {
@@ -281,6 +284,9 @@ export async function GET(req: NextRequest) {
             fechamento: q.regularMarketPrice,
             volume: q.regularMarketVolume ?? null,
             market_cap: q.marketCap ?? null,
+            abertura: q.regularMarketOpen ?? null,
+            maxima: q.regularMarketDayHigh ?? null,
+            minima: q.regularMarketDayLow ?? null,
             fonte: "brapi",
           },
           { onConflict: "ticker,data" }

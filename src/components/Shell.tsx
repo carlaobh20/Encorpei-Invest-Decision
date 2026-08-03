@@ -17,6 +17,7 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
       ["/", "Decision Center"],
       ["/radar", "Radar"],
       ["/compounders", "Compounders"],
+      ["/tecnico", "Técnico"],
       ["/teses", "Teses"],
       ["/ranking", "Ranking"],
       ["/comparar", "Comparar"],

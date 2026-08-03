@@ -1,3 +1,4 @@
+import { mapaFaixas } from "../faixas";
 import {
   COMPOUNDER_CONFIG,
   type ComponenteId,
@@ -18,20 +19,6 @@ import {
  * manual para Runway, e Gestão não tem proxy honesto com o dado disponível
  * hoje. O peso desses componentes é renormalizado entre os que TÊM dado.
  */
-
-/** Interpolação linear por faixas — mesmo mapeamento documentado em todo componente. */
-function mapaFaixas(valor: number, pontos: [number, number][]): number {
-  if (valor <= pontos[0][0]) return pontos[0][1];
-  for (let i = 1; i < pontos.length; i++) {
-    const [x0, y0] = pontos[i - 1];
-    const [x1, y1] = pontos[i];
-    if (valor <= x1) {
-      const t = (valor - x0) / (x1 - x0);
-      return y0 + t * (y1 - y0);
-    }
-  }
-  return pontos[pontos.length - 1][1];
-}
 
 function growthQuality(e: CompounderEntrada): ComponenteResultado {
   const nome = "Growth Quality (crescimento de 1 ano — ainda sem CAGR 3/5/10 anos)";
