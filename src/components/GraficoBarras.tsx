@@ -109,6 +109,51 @@ export function GraficoBarras({
   );
 }
 
+/**
+ * Tabela dos mesmos dados do gráfico — usada na versão ampliada (Zoom)
+ * para "ver os dados" de verdade, número a número.
+ */
+export function TabelaSeries({
+  series,
+  formato,
+}: {
+  series: SerieBarras[];
+  formato: "percentual" | "reais";
+}) {
+  const rotulos = series[0]?.pontos.map((p) => p.rotulo) ?? [];
+  if (rotulos.length === 0) return null;
+  return (
+    <table className="mt-3 w-full text-[12px]">
+      <thead>
+        <tr className="text-left text-[10px] uppercase tracking-wider text-slate-600">
+          <th className="py-1 pr-2">Período</th>
+          {series.map((s) => (
+            <th key={s.nome} className="py-1 pr-2 text-right">
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-sm align-middle" style={{ background: s.cor }} />
+              <span className="font-mono">{s.nome}</span>
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rotulos.map((rot, i) => (
+          <tr key={rot} className="border-t border-white/5">
+            <td className="py-1.5 pr-2 text-slate-400">{rot}</td>
+            {series.map((s) => {
+              const v = s.pontos[i]?.valor;
+              return (
+                <td key={s.nome} className="py-1.5 pr-2 text-right font-mono text-slate-200">
+                  {v === null || v === undefined ? "—" : fmtCurto(v, formato)}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 /** rótulo curto de competência: 2026-03-31 → 1T26 */
 export function rotuloTrimestre(competencia: string): string {
   const [ano, mes] = competencia.split("-");

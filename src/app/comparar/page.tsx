@@ -2,10 +2,12 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Shell } from "@/components/Shell";
 import {
   GraficoBarras,
+  TabelaSeries,
   rotuloTrimestre,
   CORES_COMPARADOR,
   type SerieBarras,
 } from "@/components/GraficoBarras";
+import { Zoom } from "@/components/Zoom";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
 import { carryVigente, type CarryResultado } from "@/lib/carry";
@@ -479,12 +481,32 @@ export default async function Comparar({
             </div>
           </section>
 
-          {/* gráficos trimestrais */}
+          {/* gráficos trimestrais — clique para ampliar e ver os dados */}
           <div className="grid gap-3 lg:grid-cols-3">
-            <GraficoBarras titulo="Receita por trimestre" formato="reais" altura={110} series={series.receita ?? []} />
-            <GraficoBarras titulo="Margem líquida" formato="percentual" altura={110} series={series.margem ?? []} />
-            <GraficoBarras titulo="ROIC (pós-imposto)" formato="percentual" altura={110} series={series.roic ?? []} />
+            {(
+              [
+                ["Receita por trimestre", "reais", series.receita ?? []],
+                ["Margem líquida", "percentual", series.margem ?? []],
+                ["ROIC (pós-imposto)", "percentual", series.roic ?? []],
+              ] as [string, "reais" | "percentual", SerieBarras[]][]
+            ).map(([tituloG, formatoG, seriesG]) => (
+              <Zoom
+                key={tituloG}
+                titulo={tituloG}
+                ampliado={
+                  <>
+                    <GraficoBarras titulo={tituloG} formato={formatoG} altura={280} series={seriesG} />
+                    <TabelaSeries series={seriesG} formato={formatoG} />
+                  </>
+                }
+              >
+                <GraficoBarras titulo={tituloG} formato={formatoG} altura={110} series={seriesG} />
+              </Zoom>
+            ))}
           </div>
+          <p className="-mt-1 text-[10px] text-slate-600">
+            clique em qualquer gráfico para ampliar e ver os números exatos
+          </p>
 
           <p className="text-[10.5px] leading-snug text-slate-600">
             Fonte: demonstrativos oficiais da CVM + nº de ações oficial; valuation com preço de

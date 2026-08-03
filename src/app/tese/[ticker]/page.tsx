@@ -6,7 +6,8 @@ import {
   regraEmPortugues,
   condicaoAtendida,
 } from "@/lib/metricas";
-import { GraficoBarras, rotuloTrimestre } from "@/components/GraficoBarras";
+import { GraficoBarras, TabelaSeries, rotuloTrimestre } from "@/components/GraficoBarras";
+import { Zoom } from "@/components/Zoom";
 import { lerMomento } from "@/lib/tecnica";
 
 export const dynamic = "force-dynamic";
@@ -356,14 +357,27 @@ export default async function TesePage({
                   rotulo: rotuloTrimestre(String(f.competencia)),
                   valor: f[campo] !== null ? Number(f[campo]) : null,
                 }));
+              const graficos = [
+                ["Receita / tri", "reais", [{ nome: tese.ticker, cor: "#059669", pontos: pontos("receita_liquida") }]],
+                ["Margem líquida", "percentual", [{ nome: tese.ticker, cor: "#059669", pontos: pontos("margem_liquida") }]],
+                ["ROIC (pós-imposto)", "percentual", [{ nome: tese.ticker, cor: "#059669", pontos: pontos("roic") }]],
+              ] as const;
               return (
                 <section className="grid grid-cols-3 gap-2">
-                  <GraficoBarras titulo="Receita / tri" formato="reais" altura={80}
-                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("receita_liquida") }]} />
-                  <GraficoBarras titulo="Margem líquida" formato="percentual" altura={80}
-                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("margem_liquida") }]} />
-                  <GraficoBarras titulo="ROIC (pós-imposto)" formato="percentual" altura={80}
-                    series={[{ nome: tese.ticker, cor: "#059669", pontos: pontos("roic") }]} />
+                  {graficos.map(([tituloG, formatoG, seriesG]) => (
+                    <Zoom
+                      key={tituloG}
+                      titulo={`${tese.ticker} — ${tituloG}`}
+                      ampliado={
+                        <>
+                          <GraficoBarras titulo={tituloG} formato={formatoG} altura={280} series={[...seriesG]} />
+                          <TabelaSeries series={[...seriesG]} formato={formatoG} />
+                        </>
+                      }
+                    >
+                      <GraficoBarras titulo={tituloG} formato={formatoG} altura={80} series={[...seriesG]} />
+                    </Zoom>
+                  ))}
                 </section>
               );
             })()}
