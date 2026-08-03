@@ -1,11 +1,47 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~19h20 (PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~19h45 (Carry Engine: níveis 2-3 (Growth/Cash) destravados, Cash v3 novo — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
 
 ## ESTADO DAS FASES
 - Fase 0 ✅ · 1 ✅ · 2.5 ✅ · 3 ✅ · Fase 7 adiantada
 - Fase 2: 11 teses RATIFICADAS ✅ · Fase 4 ✅ · Fase 5 em curso (1ª decisão ABEV3)
-- Segurança ✅ · Qualidade ✅ (148 testes + CI)
+- Segurança ✅ · Qualidade ✅ (155 testes + CI)
+
+## NOVO (03/08 ~19h45): CARRY ENGINE — NÍVEIS 2 E 3 DESTRAVADOS (pergunta do Carlos: "que dado falta buscar?") ✅ NO AR
+Carlos mandou print do `/comparar` (WEGE3) mostrando os 4 níveis do Carry
+(Growth, Cash, Allocation, Retorno Intrínseco) todos em "aguarda dados" e
+perguntou o que faltava buscar/integrar. **Resposta real: quase nada
+precisava ser buscado — dois problemas diferentes, nenhum dos dois era
+"falta um site pra integrar":**
+
+1. **BUG, não dado faltando.** `/comparar` passava `dividendosJcpLtm` /
+   `caixaOperacionalLtm` / `capexLtm` como `null` FIXO pro motor da escada
+   — mesmo já buscando esses mesmos valores reais da tabela `fluxo_caixa`
+   (DFC oficial da CVM, migração 011, coleta diária) seis linhas abaixo
+   pro Compounder. O dado sempre esteve no banco; a escada do Carry nunca
+   olhava pra ele. Corrigido: motor agora recebe os valores reais.
+2. **Nível 3 (Carry Cash) nunca tinha sido implementado** — só existia o
+   texto da pendência. Construído agora (`src/lib/carry/v3-cash.ts`):
+   troca lucro contábil por caixa operacional líquido de capex (a mesma
+   fórmula já documentada em `docs/carry-engine.md` desde antes), com o
+   mesmo gate de honestidade dos outros níveis (nunca chuta sem os dois
+   dados) e a mesma trava de linguagem.
+
+**O que continua em "aguarda dados" e por quê (isso sim é dado, não bug):**
+Nível 4 (Allocation — dividendos+recompras líquidos de diluição) e Nível 5
+(Retorno Intrínseco) precisam de uma SÉRIE HISTÓRICA de composição de
+capital pra medir diluição real. A coleta diária começou 02/08/2026 — hoje
+existe ~1 dia de histórico. **Não existe site pra buscar isso**: diluição
+só se mede comparando pontos no tempo, e o acervo cresce sozinho, um dia
+por vez, com o robô que já roda todo dia. É questão de calendário, não de
+integração.
+
+7 testes novos (155 no total), tsc + vitest + build limpos, commit
+`3e18c12`, deploy confirmado "Ready" na Vercel. **Verificação ao vivo
+pendente:** o Chrome desconectou no meio da sessão (extensão caiu) — vou
+confirmar visualmente assim que reconectar; o cálculo em si é testado
+numericamente (fórmula exata batida em teste automatizado), não é uma
+mudança visual arriscada.
 
 ## NOVO (03/08 ~19h): PIC 01 FASE 1 — ENCORPEI VIRA PLATAFORMA DE PATRIMÔNIO ✅ NO AR (decisão registrada em `roadmap/pic01-patrimonio-v1.md`)
 Carlos mandou a especificação completa "PIC 01" (~20 módulos: Master
