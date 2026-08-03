@@ -33,4 +33,5 @@ jobs:
           git add -f tools/ipe_stdout.txt
           git add tools/ipe_relatorio.md 2>/dev/null || true
           git add supabase/migrations/010_seed_comunicados.sql 2>/dev/null || true
+          git add -f tools/dados/comunicados.json 2>/dev/null || true
           git diff --cached --quiet || (git commit -m "IPE: coleta de comunicações oficiais (automático)" && git push)

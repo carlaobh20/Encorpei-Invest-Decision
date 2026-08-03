@@ -67,6 +67,7 @@ def sql_txt(s: str, limite: int = 500) -> str:
 
 def main() -> None:
     linhas: list[str] = []
+    dados_json: list[dict] = []
     vistos: set[str] = set()
     por_ticker: dict[str, int] = {}
     descartes_conflito: set[str] = set()
@@ -119,6 +120,12 @@ def main() -> None:
                     f"'{sql_txt(r.get(col_assunto, '') or '(sem assunto)', 300)}', "
                     f"'{sql_txt(r[col_link], 600)}', '{sql_txt(proto, 80)}')"
                 )
+                dados_json.append({
+                    "ticker": ticker, "data_entrega": data_e,
+                    "categoria": str(r[col_cat])[:80],
+                    "assunto": str(r.get(col_assunto, '') or '(sem assunto)')[:300],
+                    "link": str(r[col_link])[:600], "protocolo": str(proto)[:80],
+                })
                 por_ticker[ticker] = por_ticker.get(ticker, 0) + 1
 
     if not linhas:
@@ -150,6 +157,12 @@ on conflict (ticker, protocolo) do nothing;
 """
         with open("supabase/migrations/010_seed_comunicados.sql", "w") as f:
             f.write(sql)
+
+    import json as _json
+    import os as _os
+    _os.makedirs("tools/dados", exist_ok=True)
+    with open("tools/dados/comunicados.json", "w") as f:
+        _json.dump({"gerado_em": str(date.today()), "comunicados": dados_json}, f, ensure_ascii=False)
 
     rel.append(f"\n## Resumo: {len(linhas)} comunicações · {len(por_ticker)} empresas")
     for t in sorted(por_ticker):

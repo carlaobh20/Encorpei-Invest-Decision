@@ -98,6 +98,32 @@ export async function GET(req: NextRequest) {
         if (!error) nAcoes = j.acoes_totais.length;
       }
       fundamentos_sync = `${nFund} períodos + ${nAcoes} ações (gerado ${j.gerado_em})`;
+
+      // comunicações oficiais (IPE) — guardado: se a tabela 010 ainda não
+      // existir, o upsert falha em silêncio e tenta de novo amanhã
+      try {
+        const rCom = await fetch(
+          "https://raw.githubusercontent.com/carlaobh20/Encorpei-Invest-Decision/main/tools/dados/comunicados.json",
+          { cache: "no-store" }
+        );
+        if (rCom.ok) {
+          const jc = (await rCom.json()) as { comunicados: Record<string, unknown>[] };
+          let nCom = 0;
+          for (let i = 0; i < (jc.comunicados ?? []).length; i += 500) {
+            const { error } = await supabase
+              .from("comunicados_oficiais")
+              .upsert(jc.comunicados.slice(i, i + 500), {
+                onConflict: "ticker,protocolo",
+                ignoreDuplicates: true,
+              });
+            if (error) break;
+            nCom += Math.min(500, jc.comunicados.length - i);
+          }
+          fundamentos_sync += ` · ${nCom} comunicações`;
+        }
+      } catch {
+        /* tabela 010 pendente — segue o jogo */
+      }
     } else {
       fundamentos_sync = `JSON indisponível (HTTP ${rSync.status})`;
     }
