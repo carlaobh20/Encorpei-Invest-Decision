@@ -4,14 +4,20 @@ import { Shell } from "@/components/Shell";
 import { Sparkline } from "@/components/Sparkline";
 import { calcularRadar, candidatas } from "@/lib/radar";
 import { consolidarCarteira, type Posicao } from "@/lib/carteira";
+import { calcularPatrimonio } from "@/lib/patrimonio-dados";
+import { calcularTechnicals } from "@/lib/technical-dados";
+import { gerarDecisionFeed, ROTULO_SUGESTAO, type DecisionFeedEntrada, type SugestaoFeed } from "@/lib/decision-feed";
 
 export const dynamic = "force-dynamic";
 
 /**
- * DECISION CENTER — a home responde em 5 segundos:
- * o que mudou? · preciso agir? · o que merece minha atenção?
+ * MEU PATRIMÔNIO (PIC 01, 03/08/2026) — a home responde em 5 segundos:
+ * meu patrimônio está crescendo acima da inflação? · preciso agir? ·
+ * o que mudou? · o que merece minha atenção?
  * Regra inegociável: todo número é REAL (banco/regras) ou o card diz
- * "em construção" com o que o destrava. Nada decorativo, nada inventado.
+ * "em construção"/"registre X para habilitar" com o que destrava. Nada
+ * decorativo, nada inventado. Tudo que já existia no Decision Center
+ * continua aqui — só ganhou um andar novo em cima: o patrimônio.
  */
 
 type ScoreRow = {
@@ -45,6 +51,12 @@ const STATUS_TXT: Record<string, string> = {
 const DECISAO_TXT: Record<string, string> = {
   comprei: "Comprei", aumentei: "Aumentei", reduzi: "Reduzi",
   vendi: "Vendi", mantive: "Mantive", observei: "Só observei",
+};
+const SUGESTAO_COR: Record<SugestaoFeed, string> = {
+  aumentar_prioridade: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  reduzir_prioridade: "border-red-500/30 bg-red-500/10 text-red-200",
+  aguardar_melhor_ponto: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  nenhuma_acao: "border-white/10 bg-white/[0.03] text-slate-400",
 };
 
 function corNota(n: number): string {
@@ -91,7 +103,7 @@ function Card({
 export default async function DecisionCenter() {
   if (!isSupabaseConfigured || !supabase) {
     return (
-      <Shell ativo="/" titulo="Decision Center">
+      <Shell ativo="/" titulo="Meu Patrimônio">
         <p className="text-slate-400">Supabase não configurado.</p>
       </Shell>
     );
@@ -179,6 +191,38 @@ export default async function DecisionCenter() {
   const carteira =
     posicoes && posicoes.length > 0 ? consolidarCarteira(posicoes, ultimoPreco) : null;
 
+  // ---------- Patrimônio (PIC 01): série real vs CDI/IPCA/Ibovespa ----------
+  // Método e limitações documentados em src/lib/patrimonio.ts — resumo:
+  // só entram posições com data de compra registrada; assume quantidade
+  // constante desde essa data (sem ledger de trades parciais ainda).
+  const patrimonio = await calcularPatrimonio(supabase);
+
+  // ---------- Decision Feed (PIC 01): ação sugerida por posição, só regras ----------
+  let decisionFeed: ReturnType<typeof gerarDecisionFeed> = [];
+  if (carteira && carteira.linhas.length > 0) {
+    const technicalLinhas = await calcularTechnicals(supabase);
+    const technicalPorTicker = new Map(technicalLinhas.map((t) => [t.ticker, t.resultado]));
+    const entradasFeed: DecisionFeedEntrada[] = carteira.linhas.map((l) => {
+      const tec = technicalPorTicker.get(l.ticker);
+      const timing = tec?.timing ?? null;
+      const timingFavoravel =
+        timing === "excelente" || timing === "bom"
+          ? true
+          : timing === "ruim" || timing === "muito_ruim"
+          ? false
+          : null;
+      return {
+        ticker: l.ticker,
+        nome: l.ticker,
+        statusTese: (statusPorTicker.get(l.ticker) as DecisionFeedEntrada["statusTese"]) ?? null,
+        teseTecnica: tec?.teseTecnica ?? null,
+        timingFavoravel,
+        fraseTiming: tec?.fraseTiming ?? null,
+      };
+    });
+    decisionFeed = gerarDecisionFeed(entradasFeed);
+  }
+
   // ---------- hero: as respostas ----------
   const eventos = (eventosRaw as unknown as EventoRow[]) ?? [];
   const agora = Date.now();
@@ -232,7 +276,7 @@ export default async function DecisionCenter() {
   }
 
   return (
-    <Shell ativo="/" titulo="Decision Center" subtitulo={hoje} rolagem>
+    <Shell ativo="/" titulo="Meu Patrimônio" subtitulo={hoje} rolagem>
       {/* ================= HERO — o copiloto ================= */}
       <section className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-5 backdrop-blur">
         <div className="flex flex-wrap items-start justify-between gap-6">
@@ -285,6 +329,144 @@ export default async function DecisionCenter() {
           </div>
         </div>
       </section>
+
+      {/* ================= MEU PATRIMÔNIO (PIC 01) — o novo centro ================= */}
+      {carteira && carteira.valorAtual !== null ? (
+        <section className="rounded-2xl border border-emerald-400/15 bg-emerald-500/[0.03] p-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Meu Patrimônio</h2>
+            <Link href="/saude-carteira" className="text-[11px] text-sky-400 hover:underline">
+              saúde da carteira →
+            </Link>
+          </div>
+          <div className="mt-3 flex flex-wrap items-end gap-x-8 gap-y-3">
+            <div>
+              <p className="text-3xl font-bold text-slate-100">
+                {carteira.valorAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+              </p>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">patrimônio atual</p>
+            </div>
+            {carteira.resultadoPct !== null && (
+              <div>
+                <p className={`text-xl font-bold ${carteira.resultadoPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  {carteira.resultadoPct >= 0 ? "+" : ""}
+                  {(carteira.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                </p>
+                <p className="text-[10px] uppercase tracking-wider text-slate-500">sobre o preço médio</p>
+              </div>
+            )}
+            {patrimonio && patrimonio.resultado.rentabilidadeTotal !== null && (
+              <>
+                <div>
+                  <p className="text-xl font-bold text-slate-100">
+                    {(patrimonio.resultado.rentabilidadeTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">rentabilidade desde a compra</p>
+                </div>
+                <div>
+                  <p className={`text-xl font-bold ${
+                    patrimonio.resultado.alpha.vsCdi === null
+                      ? "text-slate-600"
+                      : patrimonio.resultado.alpha.vsCdi >= 0
+                      ? "text-emerald-400"
+                      : "text-red-400"
+                  }`}>
+                    {patrimonio.resultado.alpha.vsCdi !== null
+                      ? `${patrimonio.resultado.alpha.vsCdi >= 0 ? "+" : ""}${(patrimonio.resultado.alpha.vsCdi * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} p.p.`
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">alpha vs. CDI</p>
+                </div>
+                <div>
+                  <p className={`text-xl font-bold ${
+                    patrimonio.resultado.alpha.vsIbovespa === null
+                      ? "text-slate-600"
+                      : patrimonio.resultado.alpha.vsIbovespa >= 0
+                      ? "text-emerald-400"
+                      : "text-red-400"
+                  }`}>
+                    {patrimonio.resultado.alpha.vsIbovespa !== null
+                      ? `${patrimonio.resultado.alpha.vsIbovespa >= 0 ? "+" : ""}${(patrimonio.resultado.alpha.vsIbovespa * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} p.p.`
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">alpha vs. Ibovespa</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-slate-100">
+                    {patrimonio.resultado.drawdownMaximo !== null
+                      ? `${(patrimonio.resultado.drawdownMaximo * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">maior queda (drawdown)</p>
+                </div>
+                <div>
+                  <p className="text-xl font-bold text-slate-100">
+                    {patrimonio.resultado.sharpe !== null ? patrimonio.resultado.sharpe.toFixed(2) : "—"}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">Sharpe (vs. CDI)</p>
+                </div>
+              </>
+            )}
+          </div>
+          {(!patrimonio || patrimonio.resultado.rentabilidadeTotal === null) && (
+            <p className="mt-3 text-[11.5px] leading-relaxed text-slate-500">
+              Comparação com CDI/IPCA/Ibovespa e drawdown ainda indisponíveis
+              {patrimonio && patrimonio.posicoesForaDaSerie.length > 0 ? (
+                <>
+                  {" "}
+                  — falta a data de compra de{" "}
+                  <span className="font-mono text-slate-400">{patrimonio.posicoesForaDaSerie.join(", ")}</span>. Nunca
+                  estimamos essa data por você:{" "}
+                  <Link href="/carteira" className="text-sky-400 hover:underline">registre em /carteira →</Link>
+                </>
+              ) : (
+                "."
+              )}
+            </p>
+          )}
+          {patrimonio && patrimonio.resultado.sharpe === null && patrimonio.resultado.motivoSemSharpe && (
+            <p className="mt-1 text-[10.5px] leading-snug text-slate-600">{patrimonio.resultado.motivoSemSharpe}</p>
+          )}
+
+          {decisionFeed.length > 0 && (
+            <div className="mt-4 border-t border-white/5 pt-3">
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">Ação recomendada por posição — nunca &quot;comprar&quot;/&quot;vender&quot;</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {decisionFeed.map((f) => (
+                  <div
+                    key={f.ticker}
+                    title={f.explicacao}
+                    className={`rounded-lg border px-2.5 py-1.5 text-[11.5px] ${SUGESTAO_COR[f.sugestao]}`}
+                  >
+                    <span className="font-mono font-semibold">{f.ticker}</span>{" "}
+                    <span className="opacity-90">{ROTULO_SUGESTAO[f.sugestao]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section className="rounded-2xl border border-white/5 bg-white/[0.015] p-5">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Meu Patrimônio</h2>
+            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] uppercase tracking-wider text-slate-600">
+              em construção
+            </span>
+          </div>
+          <p className="mt-2 text-[12px] leading-relaxed text-slate-500">
+            {posicoes === null ? (
+              <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
+            ) : (
+              <>
+                Registre suas posições reais (com data de compra) e este painel passa a mostrar patrimônio,
+                rentabilidade e alpha contra CDI/IPCA/Ibovespa calculados sobre o que você DE FATO tem.{" "}
+                <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
+              </>
+            )}
+          </p>
+        </section>
+      )}
 
       {/* ================= cenário macro (Focus) — acende com a 012 ================= */}
       {focusPorInd.size > 0 && (

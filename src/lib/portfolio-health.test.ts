@@ -1,0 +1,60 @@
+import { describe, expect, it } from "vitest";
+import { calcularSaudeCarteira, type LinhaSaude } from "./portfolio-health";
+
+describe("calcularSaudeCarteira", () => {
+  it("carteira igualmente distribuída em 4 papéis: HHI = 0.25 (limite), rótulo alta", () => {
+    const linhas: LinhaSaude[] = ["A", "B", "C", "D"].map((t) => ({
+      ticker: t,
+      peso: 0.25,
+      modelo: "industrial",
+      carryReal: 0.08,
+      roic4: 0.15,
+      earningsYield: 0.1,
+      sensibilidadeSelic: "media",
+    }));
+    const r = calcularSaudeCarteira(linhas);
+    expect(r.concentracaoHHI).toBeCloseTo(0.25, 6);
+    expect(r.concentracaoRotulo).toBe("alta");
+    expect(r.carryMedioPonderado).toBeCloseTo(0.08, 6);
+  });
+
+  it("uma posição concentra 80% da carteira: rótulo muito_alta e maiorPosicao correta", () => {
+    const linhas: LinhaSaude[] = [
+      { ticker: "WEGE3", peso: 0.8, modelo: "industrial", carryReal: 0.1, roic4: 0.2, earningsYield: 0.08, sensibilidadeSelic: "baixa" },
+      { ticker: "ITUB4", peso: 0.2, modelo: "banco", carryReal: 0.09, roic4: null, earningsYield: 0.11, sensibilidadeSelic: null },
+    ];
+    const r = calcularSaudeCarteira(linhas);
+    expect(r.concentracaoRotulo).toBe("muito_alta");
+    expect(r.maiorPosicao).toEqual({ ticker: "WEGE3", peso: 0.8 });
+  });
+
+  it("ROIC de banco (null, pós-correção do Sector Intelligence) não contamina a média — só pondera quem tem dado", () => {
+    const linhas: LinhaSaude[] = [
+      { ticker: "WEGE3", peso: 0.5, modelo: "industrial", carryReal: 0.1, roic4: 0.2, earningsYield: 0.08, sensibilidadeSelic: "media" },
+      { ticker: "ITUB4", peso: 0.5, modelo: "banco", carryReal: 0.09, roic4: null, earningsYield: 0.11, sensibilidadeSelic: null },
+    ];
+    const r = calcularSaudeCarteira(linhas);
+    // só WEGE3 tem ROIC, então a média ponderada = 0.2 (não faz média com null)
+    expect(r.roicMedioPonderado).toBeCloseTo(0.2, 6);
+    expect(r.cobertura.roic).toBe(1);
+    expect(r.cobertura.total).toBe(2);
+  });
+
+  it("nenhuma posição com sensibilidade calculável: categoria null com motivo explicado", () => {
+    const linhas: LinhaSaude[] = [
+      { ticker: "X", peso: 1, modelo: null, carryReal: null, roic4: null, earningsYield: null, sensibilidadeSelic: null },
+    ];
+    const r = calcularSaudeCarteira(linhas);
+    expect(r.sensibilidadeSelicMedia.categoria).toBeNull();
+    expect(r.sensibilidadeSelicMedia.explicacao).toMatch(/Sem dado/);
+  });
+
+  it("alocação por modelo soma ~1 e agrupa por rótulo", () => {
+    const linhas: LinhaSaude[] = [
+      { ticker: "A", peso: 0.6, modelo: "industrial", carryReal: null, roic4: null, earningsYield: null, sensibilidadeSelic: null },
+      { ticker: "B", peso: 0.4, modelo: "industrial", carryReal: null, roic4: null, earningsYield: null, sensibilidadeSelic: null },
+    ];
+    const r = calcularSaudeCarteira(linhas);
+    expect(r.alocacaoPorModelo).toEqual([{ rotulo: "industrial", pct: 1 }]);
+  });
+});

@@ -10,12 +10,25 @@ import Link from "next/link";
  * - Verde só com significado; interação em azul/neutro.
  */
 
+/**
+ * Hierarquia PIC 01 (03/08/2026): Patrimônio → Carteira → Confluence →
+ * Teses → Oportunidades → Empresas → Indicadores. Nenhuma rota foi
+ * removida — só reorganizada: "Patrimônio" passa a ser o grupo de
+ * entrada, e Carteira/Saúde da Carteira migram pra dentro dele.
+ */
 const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
+  {
+    rotulo: "Patrimônio",
+    links: [
+      ["/", "Meu Patrimônio"],
+      ["/carteira", "Carteira"],
+      ["/saude-carteira", "Saúde da Carteira"],
+    ],
+  },
   {
     rotulo: "Decidir",
     links: [
-      ["/", "Decision Center"],
-      ["/radar", "Radar"],
+      ["/radar", "Radar · Oportunidades"],
       ["/compounders", "Compounders"],
       ["/tecnico", "Técnico"],
       ["/teses", "Teses"],
@@ -26,7 +39,6 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
   {
     rotulo: "Registrar",
     links: [
-      ["/carteira", "Carteira"],
       ["/diario", "Diário"],
       ["/replay", "Replay"],
       ["/timemachine", "Time Machine"],
