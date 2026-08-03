@@ -1,33 +1,15 @@
 import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Shell } from "@/components/Shell";
-import { calcularScore } from "@/lib/score";
-import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
+import { calcularRadar, candidatas } from "@/lib/radar";
 
 export const dynamic = "force-dynamic";
 
 /**
- * RADAR — onde procurar a PRÓXIMA tese.
- *
- * Avalia as 40 empresas do universo (não só as 11 com tese) com as MESMAS
- * réguas versionadas do algoritmo (v1). A nota aqui é uma PRÉVIA calculada
- * na hora — só vira nota oficial (gravada e imutável) quando a empresa
- * ganha uma tese e entra no motor diário. Dados: balanços CVM, preço brapi,
- * nº de ações oficial da CVM. Nada aqui é recomendação de compra ou venda.
+ * RADAR — onde procurar a PRÓXIMA tese. Prévia das 40 empresas pelas
+ * réguas versionadas v1 (cálculo em src/lib/radar.ts, compartilhado com o
+ * Decision Center). Nada aqui é recomendação de compra ou venda.
  */
-
-type Fund = {
-  ticker: string;
-  competencia: string;
-  fonte: string;
-  lucro_liquido: number | null;
-  margem_liquida: number | null;
-  roic: number | null;
-  divida_liquida: number | null;
-  patrimonio_liquido: number | null;
-};
-type Empresa = { ticker: string; nome: string; setor: string | null };
-type Preco = { ticker: string; data: string; fechamento: number; market_cap: number | null };
 
 function corNota(n: number): string {
   if (n >= 80) return "text-emerald-300";
@@ -47,110 +29,18 @@ export default async function Radar() {
     );
   }
 
-  const [{ data: empresasRaw }, { data: fundsRaw }, { data: precosRaw }, { data: acoesRaw }, { data: tesesRaw }] =
-    await Promise.all([
-      supabase.from("empresas").select("ticker, nome, setor").eq("ativo", true),
-      supabase
-        .from("fundamentos")
-        .select("ticker, competencia, fonte, lucro_liquido, margem_liquida, roic, divida_liquida, patrimonio_liquido")
-        .order("competencia", { ascending: false }),
-      supabase
-        .from("precos_diarios")
-        .select("ticker, data, fechamento, market_cap")
-        .order("data", { ascending: false })
-        .limit(300),
-      supabase.from("acoes_totais").select("ticker, qtd_acoes"),
-      supabase.from("teses").select("ticker").eq("ativa", true),
-    ]);
-
-  const empresas = (empresasRaw as Empresa[]) ?? [];
-  const fundsPorTicker = new Map<string, Fund[]>();
-  for (const f of (fundsRaw as Fund[]) ?? []) {
-    const arr = fundsPorTicker.get(f.ticker) ?? [];
-    arr.push(f); // já vem ordenado do mais recente p/ o mais antigo
-    fundsPorTicker.set(f.ticker, arr);
-  }
-  const precoPorTicker = new Map<string, Preco>();
-  for (const p of (precosRaw as Preco[]) ?? []) {
-    if (!precoPorTicker.has(p.ticker)) precoPorTicker.set(p.ticker, p);
-  }
-  const acoesPorTicker = new Map(
-    (((acoesRaw as { ticker: string; qtd_acoes: number }[]) ?? [])).map((a) => [a.ticker, Number(a.qtd_acoes)])
-  );
-  const comTese = new Set((((tesesRaw as { ticker: string }[]) ?? [])).map((t) => t.ticker));
-
-  const linhas = empresas
-    .map((e) => {
-      const funds = fundsPorTicker.get(e.ticker) ?? [];
-      if (funds.length === 0) return null;
-      const rec = funds[0];
-
-      // valor de mercado: nº de ações oficial × fechamento (units "11" e
-      // ausências caem no market_cap da brapi — mesmo guardrail do motor)
-      const preco = precoPorTicker.get(e.ticker);
-      const ehUnit = e.ticker.endsWith("11");
-      const qtd = acoesPorTicker.get(e.ticker);
-      const mcOficial =
-        !ehUnit && qtd && preco?.fechamento ? qtd * Number(preco.fechamento) : null;
-      const market_cap =
-        mcOficial ?? (preco?.market_cap ? Number(preco.market_cap) : null);
-
-      const ltm = lucroLTM(funds);
-      const margensTri = funds
-        .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)
-        .slice(0, 6)
-        .map((f) => Number(f.margem_liquida));
-
-      const previa = calcularScore({
-        roic: rec.roic !== null ? Number(rec.roic) : null,
-        margem_liquida: rec.margem_liquida !== null ? Number(rec.margem_liquida) : null,
-        divida_liquida: rec.divida_liquida !== null ? Number(rec.divida_liquida) : null,
-        patrimonio_liquido:
-          rec.patrimonio_liquido !== null ? Number(rec.patrimonio_liquido) : null,
-        lucro_ltm: ltm,
-        market_cap,
-        margens_trimestrais: margensTri,
-      });
-
-      const roic4 = roicMedia4Tri(funds);
-      const ey = ltm !== null && market_cap && market_cap > 0 ? ltm / market_cap : null;
-      const pl = ey !== null && ey > 0 ? 1 / ey : null;
-      const alav =
-        rec.divida_liquida !== null && rec.patrimonio_liquido !== null && Number(rec.patrimonio_liquido) > 0
-          ? Number(rec.divida_liquida) / Number(rec.patrimonio_liquido)
-          : null;
-
-      return {
-        ...e,
-        temTese: comTese.has(e.ticker),
-        nota: previa.score_final,
-        confianca: previa.confianca,
-        componentes: previa.decomposicao.length,
-        roic4,
-        margem: rec.margem_liquida !== null ? Number(rec.margem_liquida) : null,
-        caixaLiquido: rec.divida_liquida !== null && Number(rec.divida_liquida) <= 0,
-        alav,
-        pl,
-        ey,
-      };
-    })
-    .filter((l): l is NonNullable<typeof l> => l !== null)
-    .sort((a, b) => b.nota - a.nota);
-
-  const candidatas = linhas
-    .filter((l) => !l.temTese && l.confianca !== "baixa" && l.componentes >= 3)
-    .slice(0, 3);
+  const linhas = await calcularRadar(supabase);
+  const top = candidatas(linhas, 3);
 
   return (
     <Shell
       ativo="/radar"
       titulo="Radar"
-      subtitulo="As 40 empresas do universo avaliadas pelas MESMAS réguas versionadas do algoritmo — prévia calculada na hora, com dados oficiais. É aqui que se procura a próxima tese; nota oficial e imutável, só quando a tese existir."
+      subtitulo="As 40 empresas do universo avaliadas pelas MESMAS réguas versionadas do algoritmo — prévia calculada na hora, com dados oficiais. É aqui que se procura a próxima tese."
     >
-      {/* ---------- candidatas ---------- */}
-      {candidatas.length > 0 && (
+      {top.length > 0 && (
         <div className="flex gap-3">
-          {candidatas.map((c, i) => (
+          {top.map((c, i) => (
             <div
               key={c.ticker}
               className="flex-1 rounded-2xl border border-sky-400/20 bg-sky-500/[0.06] px-4 py-3"
@@ -160,7 +50,7 @@ export default async function Radar() {
               </p>
               <p className="mt-0.5 text-base font-bold">
                 <span className="font-mono">{c.ticker}</span>{" "}
-                <span className={`${corNota(c.nota)}`}>{c.nota}</span>
+                <span className={corNota(c.nota)}>{c.nota}</span>
                 <span className="ml-2 text-xs font-normal text-slate-400">{c.nome}</span>
               </p>
               <p className="mt-0.5 text-[11px] text-slate-400">
@@ -173,7 +63,6 @@ export default async function Radar() {
         </div>
       )}
 
-      {/* ---------- tabela ---------- */}
       <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/5 bg-white/[0.03] p-4">
         <div className="flex items-baseline justify-between">
           <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
@@ -227,11 +116,7 @@ export default async function Radar() {
                   <td className="py-1.5 pr-2 text-right font-mono text-slate-300">{pct(l.roic4)}</td>
                   <td className="py-1.5 pr-2 text-right font-mono text-slate-300">{pct(l.margem)}</td>
                   <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
-                    {l.caixaLiquido ? (
-                      <span className="text-emerald-400">caixa</span>
-                    ) : (
-                      pct(l.alav)
-                    )}
+                    {l.caixaLiquido ? <span className="text-emerald-400">caixa</span> : pct(l.alav)}
                   </td>
                   <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
                     {l.pl !== null ? `${l.pl.toFixed(1)}×` : "—"}

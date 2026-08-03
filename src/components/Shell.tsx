@@ -1,25 +1,49 @@
 import Link from "next/link";
 
 /**
- * Casca visual padrão do Encorpei — fundo com gradientes, navegação
- * unificada e container de tela única. Toda página nova nasce dentro dela.
+ * Casca do Encorpei v2 — menu lateral por CONCEITO DE DECISÃO + barra
+ * superior com busca global. Regras:
+ * - Módulos que EXISTEM ficam no menu principal.
+ * - Módulos futuros ficam em "Em construção", visualmente rebaixados e
+ *   levando a uma página que explica o que são e o que os destrava —
+ *   menu não faz promessa silenciosa.
+ * - Verde só com significado; interação em azul/neutro.
  */
-/**
- * Navegação organizada pelo CONCEITO DE DECISÃO, não por telas:
- * decidir → analisar → registrar → auditar. Só entram itens que
- * existem de verdade — menu não faz promessa.
- */
-const LINKS: [string, string][] = [
-  ["/", "Decision Center"],
-  ["/radar", "Radar"],
-  ["/teses", "Teses"],
-  ["/ranking", "Ranking"],
-  ["/comparar", "Comparar"],
-  ["/diario", "Diário"],
-  ["/replay", "Replay"],
-  ["/timemachine", "Time Machine"],
-  ["/algoritmo", "Algoritmo"],
-  ["/auditoria", "Auditoria"],
+
+const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
+  {
+    rotulo: "Decidir",
+    links: [
+      ["/", "Decision Center"],
+      ["/radar", "Radar"],
+      ["/teses", "Teses"],
+      ["/ranking", "Ranking"],
+      ["/comparar", "Comparar"],
+    ],
+  },
+  {
+    rotulo: "Registrar",
+    links: [
+      ["/diario", "Diário"],
+      ["/replay", "Replay"],
+      ["/timemachine", "Time Machine"],
+    ],
+  },
+  {
+    rotulo: "Transparência",
+    links: [
+      ["/algoritmo", "Algoritmo"],
+      ["/auditoria", "Auditoria"],
+    ],
+  },
+];
+
+const FUTUROS: [string, string][] = [
+  ["carteiras", "Carteiras"],
+  ["watchlist", "Watchlist"],
+  ["backtests", "Backtests"],
+  ["ia", "IA explicativa"],
+  ["laboratorio", "Laboratório"],
 ];
 
 export function Shell({
@@ -27,48 +51,123 @@ export function Shell({
   titulo,
   subtitulo,
   children,
+  rolagem = false,
 }: {
   ativo: string;
   titulo: string;
   subtitulo?: string;
   children: React.ReactNode;
+  /** true = página com rolagem vertical (ex.: Decision Center) */
+  rolagem?: boolean;
 }) {
   return (
-    <main className="h-dvh overflow-hidden bg-slate-950 text-slate-100 [background:radial-gradient(80%_60%_at_50%_0%,rgba(16,185,129,0.07),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(59,130,246,0.05),transparent),#020617]">
-      <div className="mx-auto flex h-full max-w-6xl flex-col gap-3 px-6 py-4">
-        <header className="flex items-end justify-between">
+    <main className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100 [background:radial-gradient(70%_50%_at_30%_0%,rgba(56,189,248,0.05),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(16,185,129,0.04),transparent),#020617]">
+      {/* ---------- menu lateral ---------- */}
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-white/5 bg-white/[0.02] px-3 py-4 lg:flex">
+        <Link href="/" className="px-2 text-sm font-semibold tracking-tight">
+          <span className="text-slate-100">encorpei</span>{" "}
+          <span className="text-sky-400">invest</span>
+        </Link>
+        <nav className="mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto text-[12.5px]">
+          {GRUPOS.map((g) => (
+            <div key={g.rotulo}>
+              <p className="px-2 text-[9.5px] uppercase tracking-[0.25em] text-slate-600">
+                {g.rotulo}
+              </p>
+              <div className="mt-1 space-y-0.5">
+                {g.links.map(([href, rotulo]) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={`block rounded-lg px-2 py-1.5 transition-colors ${
+                      ativo === href
+                        ? "bg-sky-500/10 text-sky-200"
+                        : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"
+                    }`}
+                  >
+                    {rotulo}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
           <div>
-            <Link href="/" className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500 hover:text-emerald-400">
-              Encorpei <span className="text-emerald-500">Invest</span>
-            </Link>
-            <h1 className="mt-0.5 text-2xl font-bold tracking-tight">{titulo}</h1>
-            {subtitulo && <p className="mt-0.5 max-w-2xl text-xs text-slate-500">{subtitulo}</p>}
+            <p className="px-2 text-[9.5px] uppercase tracking-[0.25em] text-slate-700">
+              Em construção
+            </p>
+            <div className="mt-1 space-y-0.5">
+              {FUTUROS.map(([m, rotulo]) => (
+                <Link
+                  key={m}
+                  href={`/em-breve?m=${m}`}
+                  className="block rounded-lg px-2 py-1.5 text-slate-600 transition-colors hover:bg-white/[0.03] hover:text-slate-400"
+                >
+                  {rotulo}
+                </Link>
+              ))}
+            </div>
           </div>
-          <nav className="flex items-center gap-2 text-xs">
-            {LINKS.map(([href, rotulo]) => (
-              <Link
-                key={href}
-                href={href}
-                className={`rounded-lg border px-3 py-1.5 transition-colors ${
-                  ativo === href
-                    ? "border-sky-400/40 bg-sky-500/10 text-sky-200"
-                    : "border-white/10 text-slate-400 hover:border-white/25 hover:text-slate-100"
-                }`}
-              >
-                {rotulo}
-              </Link>
-            ))}
+        </nav>
+        <p className="px-2 text-[9.5px] leading-snug text-slate-700">
+          Uso pessoal. Não é recomendação de investimento.
+        </p>
+      </aside>
+
+      {/* ---------- coluna principal ---------- */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* barra superior */}
+        <header className="flex items-center justify-between gap-4 border-b border-white/5 px-6 py-3">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold tracking-tight">{titulo}</h1>
+            {subtitulo && (
+              <p className="mt-0.5 max-w-3xl truncate text-[11px] text-slate-500">{subtitulo}</p>
+            )}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <form action="/buscar" className="hidden sm:block">
+              <input
+                type="search"
+                name="q"
+                placeholder="Buscar empresa…"
+                className="w-48 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-600 focus:border-sky-400/40 focus:outline-none"
+              />
+            </form>
             {process.env.NEXT_PUBLIC_AUTH_ATIVO === "true" && (
               <Link
                 href="/logout"
-                className="rounded-lg border border-white/10 px-3 py-1.5 text-slate-500 hover:border-red-500/40 hover:text-red-300"
+                className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-slate-500 hover:border-red-500/40 hover:text-red-300"
               >
                 Sair
               </Link>
             )}
-          </nav>
+          </div>
         </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-3">{children}</div>
+
+        {/* navegação compacta no mobile (sidebar oculta) */}
+        <nav className="flex gap-1.5 overflow-x-auto border-b border-white/5 px-4 py-2 text-[11px] lg:hidden">
+          {GRUPOS.flatMap((g) => g.links).map(([href, rotulo]) => (
+            <Link
+              key={href}
+              href={href}
+              className={`shrink-0 rounded-lg border px-2.5 py-1 ${
+                ativo === href
+                  ? "border-sky-400/40 bg-sky-500/10 text-sky-200"
+                  : "border-white/10 text-slate-400"
+              }`}
+            >
+              {rotulo}
+            </Link>
+          ))}
+        </nav>
+
+        {/* conteúdo */}
+        <div
+          className={`flex min-h-0 flex-1 flex-col gap-3 px-6 py-4 ${
+            rolagem ? "overflow-y-auto" : "overflow-hidden"
+          }`}
+        >
+          {children}
+        </div>
       </div>
     </main>
   );
