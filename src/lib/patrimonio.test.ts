@@ -28,6 +28,25 @@ describe("indiceAcumulado", () => {
     const idx = indiceAcumulado(obs, "nivel", ["2026-01-01", "2026-01-02"]);
     expect(idx.get("2026-01-02")).toBe(idx.get("2026-01-01"));
   });
+
+  it("taxa_evento (IPCA): 1º dia da janela sem publicação nasce em 1.0 (não fica null) — caso real: IPCA só publica dia 1 do mês, janela começa dia 5", () => {
+    const obs = [
+      { data: "2026-04-01", valor: 0.67 }, // antes da janela — não deve importar
+      { data: "2026-06-01", valor: 0.16 }, // só entra dentro da janela no 6º dia
+    ];
+    const janela = ["2026-05-05", "2026-05-06", "2026-05-07", "2026-05-08", "2026-05-09", "2026-06-01"];
+    const idx = indiceAcumulado(obs, "taxa_evento", janela);
+    expect(idx.get("2026-05-05")).toBeCloseTo(1, 6); // nasce em 1.0, não null
+    expect(idx.get("2026-05-09")).toBeCloseTo(1, 6); // sem publicação nova: repete
+    expect(idx.get("2026-06-01")).toBeCloseTo(1.0016, 6); // publicação de junho compõe a partir do 1.0
+  });
+
+  it("taxa_diaria (CDI): 1º dia da janela sem publicação (fim de semana) também nasce em 1.0", () => {
+    const obs = [{ data: "2026-01-02", valor: 0.05 }]; // 1º dia útil é 02/01, não 01/01
+    const idx = indiceAcumulado(obs, "taxa_diaria", ["2026-01-01", "2026-01-02"]);
+    expect(idx.get("2026-01-01")).toBeCloseTo(1, 6);
+    expect(idx.get("2026-01-02")).toBeCloseTo(1.0005, 6);
+  });
 });
 
 describe("calcularDrawdown", () => {

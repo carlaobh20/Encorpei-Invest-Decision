@@ -74,7 +74,21 @@ export type ResultadoPatrimonio = {
  *   a cada observação encontrada até e incluindo o dia.
  * - taxa_evento (IPCA): valor = % no mês, publicado 1x/mês → índice é uma
  *   função em degraus, sobe só quando existe observação naquele dia.
- * - nivel (Ibovespa): índice(t) = pontos(t) / pontos(desde).
+ * - nivel (Ibovespa): índice(t) = pontos(t) / pontos(desde). Precisa de uma
+ *   observação REAL pra nascer — não dá pra chutar um nível de índice, então
+ *   fica null até a primeira publicação dentro da janela (isso só se
+ *   resolve com mais histórico coletado, nunca com um ajuste de código).
+ * - taxa_diaria/taxa_evento (CDI/IPCA): representam uma VARIAÇÃO, não um
+ *   nível — por isso o índice pode nascer em 1.0 já no primeiro dia da
+ *   janela mesmo SEM observação exatamente nesse dia (ex.: IPCA publica só
+ *   dia 1 de cada mês; se a janela começa dia 5, ainda não houve nova
+ *   leitura — tratamos como "sem variação ainda", não como indefinido).
+ *   Corrigido em 03/08/2026 junto com o bug da dataCompra: antes, CDI/IPCA
+ *   só "nasciam" quando a primeira observação caía numa data exatamente
+ *   dentro da janela, o que deixava os dois nulos por dias ou semanas mesmo
+ *   com histórico de sobra ANTES da janela — sem inventar nenhum número,
+ *   só estendendo o mesmo princípio abaixo (repetir o último índice
+ *   conhecido) também pro início da janela, não só pros buracos no meio.
  * Nunca inventa observação num dia sem dado: repete o último índice
  * conhecido (comportamento padrão de qualquer benchmark "flat" em dia sem
  * publicação — CDI/IPCA não publicam fim de semana, por exemplo).
@@ -91,7 +105,7 @@ export function indiceAcumulado(
   let indice: number | null = null;
   let nivelBase: number | null = null;
 
-  for (const data of datasOrdenadas) {
+  datasOrdenadas.forEach((data, i) => {
     const valor = porData.get(data);
     if (tipo === "nivel") {
       if (valor !== undefined) {
@@ -102,18 +116,23 @@ export function indiceAcumulado(
       if (valor !== undefined) {
         indice = indice === null ? 1 : indice * (1 + valor / 100);
       } else if (indice === null) {
-        // ainda não achou a primeira observação: fica null até achar
+        // sem observação nesse dia: se é o 1º dia da janela, nasce em 1.0
+        // ("ainda sem variação"); senão, continua indefinido até achar a
+        // primeira publicação — nunca inventa um valor intermediário.
+        if (i === 0) indice = 1;
       }
     } else {
       // taxa_evento (IPCA): só sobe em dia de publicação
       if (valor !== undefined) {
         indice = indice === null ? 1 : indice * (1 + valor / 100);
       } else if (indice === null) {
-        // idem
+        // mesmo raciocínio do taxa_diaria acima: 1º dia da janela nasce em
+        // 1.0 mesmo sem publicação nesse dia exato (IPCA só publica 1x/mês).
+        if (i === 0) indice = 1;
       }
     }
     resultado.set(data, indice);
-  }
+  });
   return resultado;
 }
 
