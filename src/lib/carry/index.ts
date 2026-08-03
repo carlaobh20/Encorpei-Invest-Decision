@@ -1,6 +1,7 @@
 import { CARRY_CONFIG, type CarryCalculator } from "./types";
 import { carryV1Piso } from "./v1-piso";
 import { carryV2Growth } from "./v2-growth";
+import { carryV3Cash } from "./v3-cash";
 
 /**
  * Registro de versões do Carry Engine. Trocar metodologia = registrar nova
@@ -10,6 +11,7 @@ import { carryV2Growth } from "./v2-growth";
 const CALCULADORAS: Record<number, CarryCalculator> = {
   1: carryV1Piso,
   2: carryV2Growth,
+  3: carryV3Cash,
 };
 
 export function carryVigente(): CarryCalculator {

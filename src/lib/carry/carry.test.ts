@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { carryVigente } from "./index";
 import { carryV2Growth } from "./v2-growth";
+import { carryV3Cash } from "./v3-cash";
 import { escadaCarry } from "./escada";
 import type { CarryEntrada } from "./types";
 
@@ -120,12 +121,79 @@ describe("Carry v2 (Growth)", () => {
   });
 });
 
+describe("Carry v3 (Cash)", () => {
+  const comDfc: CarryEntrada = {
+    ...base,
+    dividendosJcpLtm: -180_000_000,
+    caixaOperacionalLtm: 800_000_000,
+    capexLtm: -200_000_000, // DFC traz capex como negativo
+  };
+
+  it("fórmula: (caixa operacional + capex) ÷ valor de mercado", () => {
+    // (800mi - 200mi) / 10bi = 0.06
+    const r = carryV3Cash.calcular(comDfc);
+    expect(r.carryReal).toBeCloseTo(0.06, 6);
+    expect(r.versao).toBe(3);
+  });
+
+  it("sem caixa operacional ou capex: null com pendência explícita — nunca chuta a partir do lucro", () => {
+    const r = carryV3Cash.calcular(base);
+    expect(r.carryReal).toBeNull();
+    expect(r.explicacao).toContain("aguarda");
+  });
+
+  it("caixa negativo vira fator de atenção explícito", () => {
+    const r = carryV3Cash.calcular({ ...comDfc, caixaOperacionalLtm: 100_000_000, capexLtm: -300_000_000 });
+    expect(r.carryReal).toBeLessThan(0);
+    expect(r.fatores.some((f) => f.direcao === "atencao" && f.texto.includes("consumindo caixa"))).toBe(true);
+  });
+
+  it("financeira: confiança baixa e aviso explícito", () => {
+    const r = carryV3Cash.calcular({ ...comDfc, ehFinanceira: true });
+    expect(r.confianca).toBe("baixa");
+    expect(r.fatores.some((f) => f.texto.includes("Banco/seguradora"))).toBe(true);
+  });
+
+  it("trava de linguagem também no v3", () => {
+    for (const e of [comDfc, base]) {
+      const r = carryV3Cash.calcular(e);
+      const texto = [r.explicacao, ...r.fatores.map((f: { texto: string }) => f.texto)]
+        .join(" ").toLowerCase().replaceAll("nunca retorno garantido", "");
+      expect(texto).not.toMatch(/garantid|prometid|compre|venda|recomend/);
+    }
+  });
+
+  it("é determinístico: mesma entrada, mesmo resultado", () => {
+    const a = carryV3Cash.calcular(comDfc);
+    const b = carryV3Cash.calcular(comDfc);
+    expect(a).toEqual(b);
+  });
+});
+
 describe("escadaCarry", () => {
   it("5 níveis sempre presentes; sem DFC só o Floor tem número", () => {
     const degraus = escadaCarry(base);
     expect(degraus).toHaveLength(5);
     expect(degraus[0].resultado?.carryReal).toBeCloseTo(0.06, 3);
     expect(degraus[1].pendencia).toContain("DFC");
+    expect(degraus[2].pendencia).toContain("DFC");
     expect(degraus[4].pendencia).toContain("indicador principal");
+  });
+
+  it("com dados de DFC: níveis 2 e 3 acendem com número real", () => {
+    const comDfc: CarryEntrada = {
+      ...base,
+      dividendosJcpLtm: -180_000_000,
+      caixaOperacionalLtm: 800_000_000,
+      capexLtm: -200_000_000,
+    };
+    const degraus = escadaCarry(comDfc);
+    expect(degraus[1].resultado?.carryReal).not.toBeNull();
+    expect(degraus[1].pendencia).toBeNull();
+    expect(degraus[2].resultado?.carryReal).not.toBeNull();
+    expect(degraus[2].pendencia).toBeNull();
+    // 4 e 5 continuam pendentes — precisam de série histórica, não de wiring
+    expect(degraus[3].resultado).toBeNull();
+    expect(degraus[4].resultado).toBeNull();
   });
 });

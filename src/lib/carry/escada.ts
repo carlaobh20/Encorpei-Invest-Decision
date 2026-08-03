@@ -1,6 +1,7 @@
 import type { CarryEntrada, CarryResultado } from "./types";
 import { carryV1Piso } from "./v1-piso";
 import { carryV2Growth } from "./v2-growth";
+import { carryV3Cash } from "./v3-cash";
 
 /**
  * A ESCADA DO CARRY — os 5 níveis, sempre visíveis, cada um no seu estado
@@ -19,9 +20,7 @@ export type DegrauCarry = {
 export function escadaCarry(e: CarryEntrada): DegrauCarry[] {
   const floor = carryV1Piso.calcular(e);
   const growth = carryV2Growth.calcular(e);
-
-  const temDfc =
-    e.caixaOperacionalLtm !== null && e.caixaOperacionalLtm !== undefined;
+  const cash = carryV3Cash.calcular(e);
 
   return [
     {
@@ -37,22 +36,24 @@ export function escadaCarry(e: CarryEntrada): DegrauCarry[] {
       pendencia:
         growth.carryReal !== null
           ? null
-          : "aguarda dividendos pagos (DFC/CVM — robô diário já coleta; migração 011 pendente)",
+          : "aguarda dividendos pagos (DFC/CVM — robô diário já coleta)",
     },
     {
       nivel: 3,
       nome: "Carry Cash (caixa em vez de lucro contábil)",
-      resultado: null,
-      pendencia: temDfc
-        ? "metodologia v3 em calibração sobre os dados de DFC recém-coletados"
-        : "aguarda fluxo de caixa operacional e capex (DFC/CVM — mesma coleta diária)",
+      resultado: cash.carryReal !== null ? cash : null,
+      pendencia:
+        cash.carryReal !== null
+          ? null
+          : "aguarda caixa operacional e capex (DFC/CVM — mesma coleta diária)",
     },
     {
       nivel: 4,
       nome: "Carry Allocation (o que chega ao acionista)",
       resultado: null,
       pendencia:
-        "aguarda recompras, diluição e dividendos acumulados (DFC + composição de capital ao longo do tempo)",
+        "aguarda HISTÓRICO de composição de capital pra medir diluição real (a coleta diária começou " +
+        "02/08/2026 — não é dado que falta buscar, é série que precisa acumular meses de calendário)",
     },
     {
       nivel: 5,

@@ -53,8 +53,10 @@ export interface CarryCalculator {
 
 /**
  * Configuração versionada (nunca pesos hardcoded espalhados).
- * v2 planejada: componente de crescimento reinvestido = retenção × ROIC —
- * DESTRAVA com a leitura de dividendos/payout no backfill da CVM.
+ * v2 (Growth) e v3 (Cash) já em produção, usando dividendos/payout e
+ * caixa operacional/capex lidos da DFC oficial (migração 011). v4
+ * (Allocation) e v5 (Retorno Intrínseco) aguardam série histórica de
+ * composição de capital, não dado que falte buscar — ver docs/carry-engine.md.
  */
 export const CARRY_CONFIG = {
   versaoVigente: 1,

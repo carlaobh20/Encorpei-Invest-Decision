@@ -1,6 +1,6 @@
 # Encorpei Carry Engine — Documento Técnico
 
-Versão do documento: 2 · 03/08/2026 · Princípios: nenhum cálculo escondido,
+Versão do documento: 3 · 03/08/2026 · Princípios: nenhum cálculo escondido,
 nenhuma IA no número, nenhum peso secreto, tudo reproduzível e versionado.
 
 ## Nomenclatura (decisão de produto, 03/08/2026)
@@ -26,7 +26,7 @@ carry_floor = lucro_12m ÷ valor_de_mercado
 - Limitações declaradas: lucro contábil ≠ caixa; 12 meses podem conter
   não-recorrentes; financeiras têm confiança rebaixada.
 
-### Nível 2 — Carry Growth (v2) · CÓDIGO PRONTO, AGUARDA DADO
+### Nível 2 — Carry Growth (v2) · EM PRODUÇÃO (03/08/2026, mesma tarde)
 ```
 payout    = |dividendos+JCP pagos 12m| ÷ lucro_12m     (limitado a 0..1)
 retenção  = 1 − payout
@@ -37,27 +37,36 @@ carry_growth = (carry_floor × payout) + (retenção × ROIC_4tri)
 - Propriedade honesta: se ROIC < carry_floor, reter DESTRÓI valor e o
   Growth fica ABAIXO do Floor — o sistema mostra isso, não esconde.
 - Dado que destrava: dividendos+JCP pagos, lidos da DFC consolidada
-  (contas 6.03.x) — extração JÁ implementada no backfill diário; entra no
-  banco com a migração 011.
+  (contas 6.03.x) — coletado desde a migração 011. **Bug corrigido em
+  03/08/2026:** o cálculo estava correto, mas `/comparar` passava `null`
+  fixo em vez do dado já coletado — a escada nunca via o número que já
+  existia no banco. Wiring corrigido, sem coleta nova necessária.
 
-### Nível 3 — Carry Cash (v3) · PLANEJADO
+### Nível 3 — Carry Cash (v3) · EM PRODUÇÃO (03/08/2026, mesma tarde)
 Substitui lucro contábil por caixa econômico:
 ```
-fcf_aprox = caixa_operacional_12m (6.01) − capex_12m (linhas de
-            imobilizado/intangível do 6.02)
-carry_cash = fcf_aprox ÷ valor_de_mercado  (+ variante growth com retenção)
+fcf_aprox = caixa_operacional_12m (6.01) + capex_12m (6.02, já negativo
+            na DFC — somar com sinal já subtrai o capex)
+carry_cash = fcf_aprox ÷ valor_de_mercado
 ```
-- Atenção metodológica registrada: ITR de DFC é ACUMULADA no ano (jan→fim
-  do trimestre) — a montagem de 12m usa DFP + acumulados com períodos
-  explícitos (colunas inicio/dias na tabela fluxo_caixa).
-- Calibração contra casos conhecidos antes de ligar (mesma disciplina da
-  auditoria de valuation de 01/08).
+- Atenção metodológica: ITR de DFC é ACUMULADA no ano (jan→fim do
+  trimestre) — a montagem de 12m reusa `ltmCampo` (mesma função do
+  Floor/Growth), que já cancela corretamente o acumulado do ano anterior
+  equivalente; não precisou de lógica nova para isso.
+- Confiança rebaixada para financeiras (caixa operacional de banco mistura
+  captação/aplicação, não é comparável a caixa de empresa não financeira).
+- Variante growth (retenção sobre caixa em vez de lucro) fica para quando
+  o nível 3 tiver uso real — não implementada agora para não adicionar
+  complexidade sem necessidade comprovada.
 
-### Nível 4 — Carry Allocation (v4) · PLANEJADO
+### Nível 4 — Carry Allocation (v4) · BLOQUEADO POR TEMPO, NÃO POR DADO
 Mede o que chega ao acionista: dividendos + recompras (6.03) − diluição
 (variação do nº de ações na composição de capital ao longo do tempo).
-Requer histórico acumulado de composição de capital (coleta diária começou
-em 02/08/2026 — o acervo cresce sozinho).
+Requer histórico acumulado de composição de capital — a coleta diária
+começou em 02/08/2026, então hoje existe ~1 dia de série. Não há site nem
+fonte para "buscar" isso: diluição só se mede comparando pontos no tempo,
+e o acervo cresce sozinho, um dia por vez, com o robô diário já rodando.
+Reavaliar quando a série tiver alguns meses.
 
 ### Nível 5 — Retorno Intrínseco (v5) · O DESTINO
 Integra 1-4 + risco/previsibilidade. Regra de entrada: SÓ nasce quando os
@@ -73,10 +82,11 @@ limitado pelo melhor histórico REAL da própria empresa) entram junto.
 - Qualquer mapeamento arbitrário nota→retorno.
 
 ## Testes (vitest, rodam no CI a cada push)
-Fórmulas v1 e v2 com casos numéricos; gates de dado ausente (null, nunca
-chute); payout>100% limitado; ROIC baixo rebaixando o Growth; determinismo;
-TRAVA DE LINGUAGEM (falha se qualquer texto prometer retorno ou ordenar
-compra/venda — "garantido" só existe negado).
+Fórmulas v1, v2 e v3 com casos numéricos; gates de dado ausente (null,
+nunca chute); payout>100% limitado; ROIC baixo rebaixando o Growth; caixa
+negativo virando fator de atenção explícito; determinismo; TRAVA DE
+LINGUAGEM em todas as versões (falha se qualquer texto prometer retorno ou
+ordenar compra/venda — "garantido" só existe negado).
 
 ## Versionamento
 CarryCalculator é uma interface plugável; cada metodologia é uma versão

@@ -229,6 +229,18 @@ export default async function Comparar({
         indicadorPermitido(t, "divida_liquida") && rec?.divida_liquida != null
           ? Number(rec.divida_liquida) <= 0
           : null;
+
+      // Fluxo de caixa oficial (DFC/CVM, migração 011) — alimenta os
+      // níveis 2-3 do Carry (Growth/Cash) E o Compounder logo abaixo.
+      // Corrigido em 03/08/2026: a escada estava recebendo null hardcoded
+      // aqui mesmo com o dado já coletado e já em uso no Compounder — os
+      // níveis 2-3 ficavam presos em "aguarda dados" à toa.
+      const fluxo = fluxoPorTicker(t);
+      const dividendosJcpLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.dividendos_jcp) : null;
+      const caixaOperacionalLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.caixa_operacional) : null;
+      const capexLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.capex) : null;
+      const recomprasLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.recompras) : null;
+
       const escada = escadaCarry({
         lucroLtm,
         marketCap: mc,
@@ -238,17 +250,11 @@ export default async function Comparar({
         alavancagem: alav,
         crescReceitaAnual: cresc((f) => (f.receita_liquida != null ? Number(f.receita_liquida) : null)),
         ehFinanceira,
-        dividendosJcpLtm: null, // destrava com a migração 011 + sync da DFC
-        caixaOperacionalLtm: null,
-        capexLtm: null,
+        dividendosJcpLtm,
+        caixaOperacionalLtm,
+        capexLtm,
       });
       const carry = escada[0].resultado;
-
-      const fluxo = fluxoPorTicker(t);
-      const dividendosJcpLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.dividendos_jcp) : null;
-      const caixaOperacionalLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.caixa_operacional) : null;
-      const capexLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.capex) : null;
-      const recomprasLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.recompras) : null;
       const compounder = calcularCompounder({
         ticker: t,
         receitaAnoAtual: dfps[0]?.receita_liquida ?? null,
@@ -479,7 +485,7 @@ export default async function Comparar({
               <h2 className="text-[11px] uppercase tracking-[0.25em] text-sky-300/90">
                 Encorpei Carry Engine — a escada até o Retorno Intrínseco
               </h2>
-              <span className="text-[10px] text-slate-500">v1 · piso conservador · determinístico</span>
+              <span className="text-[10px] text-slate-500">níveis 1-3 no ar · determinístico</span>
             </div>
             <div className={`mt-3 grid gap-3 ${cards.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
               {cards.map((r) => (
@@ -533,13 +539,14 @@ export default async function Comparar({
             </div>
             <p className="mt-3 text-[10.5px] leading-snug text-slate-500">
               O número grande é o NÍVEL 1 (Carry Floor): lucro 12m ÷ valor de mercado — o pior
-              cenário, empresa que nunca mais cresce. Os níveis 2-5 acendem conforme os dados
-              oficiais chegam (o robô diário já coleta a DFC): Growth soma o reinvestimento
-              (retenção × ROIC), Cash troca lucro contábil por geração de caixa, Allocation mede
-              o que chega ao acionista, e o Retorno Intrínseco integra tudo — fórmulas abertas em
-              docs/carry-engine.md do repositório. <span className="text-slate-400">Estimativas
-              baseadas nos fundamentos atuais — NÃO é retorno garantido nem promessa de
-              rentabilidade.</span>
+              cenário, empresa que nunca mais cresce. Growth (reinvestimento a ROIC) e Cash (caixa
+              operacional líquido de capex, no lugar do lucro contábil) já calculam com dado oficial
+              da DFC/CVM. Allocation (o que chega ao acionista via dividendos/recompras, líquido de
+              diluição) e o Retorno Intrínseco aguardam a série histórica de composição de capital
+              acumular — não são dado que falta buscar, são meses de calendário de coleta diária —
+              fórmulas abertas em docs/carry-engine.md do repositório.
+              <span className="text-slate-400"> Estimativas baseadas nos fundamentos atuais — NÃO é
+              retorno garantido nem promessa de rentabilidade.</span>
             </p>
           </section>
 
