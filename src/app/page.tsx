@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Shell } from "@/components/Shell";
 import { Sparkline } from "@/components/Sparkline";
 import { calcularRadar, candidatas } from "@/lib/radar";
+import { consolidarCarteira, type Posicao } from "@/lib/carteira";
 
 export const dynamic = "force-dynamic";
 
@@ -166,6 +167,18 @@ export default async function DecisionCenter() {
     precosPorTicker.set(p.ticker, arr);
   }
 
+  // ---------- carteira (guardado: sem a migração 014, vem erro e fica null) ----------
+  const { data: posicoesRaw, error: erroPosicoes } = await supabase
+    .from("posicoes")
+    .select("ticker, quantidade, preco_medio");
+  const posicoes = erroPosicoes ? null : ((posicoesRaw as Posicao[]) ?? []);
+  const ultimoPreco = new Map<string, number>();
+  for (const [t, ps] of precosPorTicker) {
+    if (ps[0]?.fechamento) ultimoPreco.set(t, Number(ps[0].fechamento));
+  }
+  const carteira =
+    posicoes && posicoes.length > 0 ? consolidarCarteira(posicoes, ultimoPreco) : null;
+
   // ---------- hero: as respostas ----------
   const eventos = (eventosRaw as unknown as EventoRow[]) ?? [];
   const agora = Date.now();
@@ -209,6 +222,12 @@ export default async function DecisionCenter() {
   if (topCandidatas.length > 0) {
     frases.push(
       `O Radar aponta ${topCandidatas.length} candidata${topCandidatas.length > 1 ? "s" : ""} a nova tese — a mais forte é ${topCandidatas[0].ticker} (${topCandidatas[0].nota}).`
+    );
+  }
+  if (carteira && carteira.valorAtual !== null && carteira.resultadoPct !== null) {
+    const sinal = carteira.resultadoPct >= 0 ? "+" : "−";
+    frases.push(
+      `Sua carteira vale ${carteira.valorAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (${sinal}${Math.abs(carteira.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% sobre o investido).`
     );
   }
 
@@ -449,15 +468,43 @@ export default async function DecisionCenter() {
           )}
         </Card>
 
-        <Card titulo="Carteira & Convicção" futuro>
-          <p className="text-[12px] leading-relaxed text-slate-500">
-            Saúde da carteira (nota ponderada, risco, diversificação) e Convicção calibrada
-            entram quando houver <span className="text-slate-300">posições registradas</span> e{" "}
-            <span className="text-slate-300">track record medido</span>. Número de convicção sem
-            histórico é decoração — e decoração destrói confiança.{" "}
-            <Link href="/em-breve?m=carteiras" className="text-sky-400 hover:underline">saiba o que destrava →</Link>
-          </p>
-        </Card>
+        {carteira ? (
+          <Card titulo="Sua carteira" acao={{ href: "/carteira", rotulo: "carteira" }}>
+            <div className="space-y-2">
+              {carteira.linhas.slice(0, 3).map((l) => (
+                <div key={l.ticker} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-[12.5px]">
+                  <span className="font-mono font-semibold">{l.ticker}</span>
+                  <span className={`font-mono ${
+                    l.resultadoPct === null ? "text-slate-600" : l.resultadoPct >= 0 ? "text-emerald-400" : "text-red-400"
+                  }`}>
+                    {l.resultadoPct === null
+                      ? "—"
+                      : `${l.resultadoPct >= 0 ? "+" : ""}${(l.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
+                  </span>
+                </div>
+              ))}
+              <p className="text-[10px] text-slate-600">
+                {carteira.linhas.length} posiç{carteira.linhas.length > 1 ? "ões" : "ão"} ·
+                resultado sobre o SEU preço médio — nunca recomendação
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <Card titulo="Sua carteira" futuro>
+            <p className="text-[12px] leading-relaxed text-slate-500">
+              {posicoes === null ? (
+                <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
+              ) : (
+                <>
+                  Registre suas posições reais (quantidade e preço médio) e este
+                  card passa a mostrar patrimônio e resultado calculados sobre o
+                  que você DE FATO tem.{" "}
+                  <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
+                </>
+              )}
+            </p>
+          </Card>
+        )}
 
         <Card titulo="Calendário & IA explicativa" futuro>
           <p className="text-[12px] leading-relaxed text-slate-500">

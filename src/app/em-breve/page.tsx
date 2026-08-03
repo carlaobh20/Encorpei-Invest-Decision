@@ -10,10 +10,10 @@ export const dynamic = "force-dynamic";
  */
 
 const MODULOS: Record<string, { nome: string; oque: string; destrava: string }> = {
-  carteiras: {
-    nome: "Carteiras",
-    oque: "Suas posições reais organizadas por estratégia, com a saúde da carteira (nota média ponderada, risco, diversificação) calculada sobre o que você de fato possui.",
-    destrava: "Registro de posições (quantidade e preço médio por papel). Entra depois que o hábito do Diário estiver rodando — carteira sem diário vira só um número bonito.",
+  benchmarks: {
+    nome: "Carteira vs CDI/Ibovespa",
+    oque: "A Carteira já existe (menu Registrar). O que falta é a comparação com benchmarks: sua carteira rendeu mais ou menos que o CDI e o Ibovespa? E Sharpe/risco medidos de verdade.",
+    destrava: "Duas coisas: série de patrimônio acumulada (começou a nascer com o registro de posições) e coleta oficial de CDI/IPCA (API do Banco Central) e Ibovespa. Sem série, qualquer Sharpe seria número inventado.",
   },
   watchlist: {
     nome: "Watchlist",

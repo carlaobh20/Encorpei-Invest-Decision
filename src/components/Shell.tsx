@@ -24,6 +24,7 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
   {
     rotulo: "Registrar",
     links: [
+      ["/carteira", "Carteira"],
       ["/diario", "Diário"],
       ["/replay", "Replay"],
       ["/timemachine", "Time Machine"],
@@ -39,7 +40,6 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
 ];
 
 const FUTUROS: [string, string][] = [
-  ["carteiras", "Carteiras"],
   ["watchlist", "Watchlist"],
   ["backtests", "Backtests"],
   ["ia", "IA explicativa"],
