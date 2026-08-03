@@ -6,7 +6,7 @@
 --    infra financeira) pontuam por ROE + margem + estabilidade + valuation,
 --    SEM dívida/ROIC industrial; demais modelos mantêm as réguas v1;
 --    cíclicas ganham aviso de ciclo. A v1 permanece intacta para sempre.
--- PENDENTE DE APLICAÇÃO.
+-- APLICADA em 03/08/2026 via SQL Editor (012: DDL aplicado; seed via coleta).
 
 alter table empresas add column if not exists modelo_analise text;
 

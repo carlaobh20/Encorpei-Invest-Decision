@@ -1,6 +1,6 @@
 -- ENCORPEI — Migração 014: CARTEIRA (posições reais do dono).
 -- Destrava o Decision Center de verdade: patrimônio, resultado, pesos e
--- alocação só podem ser REAIS com posições registradas. PENDENTE DE APLICAÇÃO.
+-- alocação só podem ser REAIS com posições registradas. APLICADA em 03/08/2026 via SQL Editor (012: DDL aplicado; seed via coleta).
 -- Posições são ESTADO ATUAL (editáveis); o registro imutável de decisões
 -- continua sendo o Diário — um não substitui o outro.
 

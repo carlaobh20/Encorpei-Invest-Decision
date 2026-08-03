@@ -1,7 +1,7 @@
 -- ENCORPEI — Migração 011: fluxo de caixa (DFC consolidada da CVM).
 -- Destrava os níveis 2-4 do Carry Engine (Growth, Cash, Allocation):
 -- caixa operacional, capex, dividendos+JCP pagos e recompras — lidos dos
--- MESMOS zips oficiais do backfill diário. PENDENTE DE APLICAÇÃO.
+-- MESMOS zips oficiais do backfill diário. APLICADA em 03/08/2026 via SQL Editor (012: DDL aplicado; seed via coleta).
 -- Nota: ITR de DFC é ACUMULADO no ano (jan→fim do trimestre); a coluna
 -- inicio + dias preservam o período exato para quem consome.
 

@@ -1,5 +1,5 @@
 -- ENCORPEI CARRY ENGINE — Migração 009: histórico do carrego estimado.
--- PENDENTE DE APLICAÇÃO (escrita em 03/08/2026; aplicar via SQL Editor).
+-- APLICADA em 03/08/2026 via SQL Editor (012: DDL aplicado; seed via coleta).
 -- Depois de aplicada, o motor diário passa a gravar o carry de cada empresa
 -- junto com as notas — histórico imutável, mesma disciplina de scores.
 
