@@ -41,6 +41,7 @@ export default async function TecnicoDetalhe({ params }: { params: Promise<{ tic
       ativo="/tecnico"
       titulo={`Técnico — ${l.ticker}`}
       subtitulo="Cada componente, com nota ou com o motivo de estar sem nota. O gráfico nunca aprova sozinho uma empresa ruim."
+      rolagem
     >
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-400">
