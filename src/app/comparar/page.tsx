@@ -8,6 +8,7 @@ import {
 } from "@/components/GraficoBarras";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
+import { carryVigente, type CarryResultado } from "@/lib/carry";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +90,7 @@ export default async function Comparar({
   let cards: {
     ticker: string; nome: string; cor: string;
     nota: number | null; notaOficial: boolean; confianca: string | null;
+    carry: CarryResultado | null;
   }[] = [];
   let metricas: Metrica[] = [];
   let resumoExec: string[] = [];
@@ -179,9 +181,24 @@ export default async function Comparar({
         margens_trimestrais: margensTri,
       });
 
+      const roic4 = roicMedia4Tri(fs);
+      const alav = rec?.divida_liquida != null && pl && pl > 0 ? Number(rec.divida_liquida) / pl : null;
+      const ehFinanceira = (rec?.roic ?? null) === null && (rec?.divida_liquida ?? null) === null;
+      const carry = carryVigente().calcular({
+        lucroLtm,
+        marketCap: mc,
+        roic4,
+        margensDesvio: desvio,
+        caixaLiquido: rec?.divida_liquida != null ? Number(rec.divida_liquida) <= 0 : null,
+        alavancagem: alav,
+        crescReceitaAnual: cresc((f) => (f.receita_liquida != null ? Number(f.receita_liquida) : null)),
+        ehFinanceira,
+      });
+
       return {
         ticker: t,
-        roic4: roicMedia4Tri(fs),
+        carry,
+        roic4,
         roe: lucroLtm !== null && pl && pl > 0 ? lucroLtm / pl : null,
         margemBruta: rec?.margem_bruta != null ? Number(rec.margem_bruta) : null,
         margemLiq: rec?.margem_liquida != null ? Number(rec.margem_liquida) : null,
@@ -213,6 +230,7 @@ export default async function Comparar({
         nota: c.notaFinal,
         notaOficial: c.notaOficial,
         confianca: c.confianca,
+        carry: c.carry,
       };
     });
 
@@ -332,6 +350,57 @@ export default async function Comparar({
               </div>
             ))}
           </div>
+
+          {/* ============ ENCORPEI CARRY (destaque) ============ */}
+          <section className="rounded-2xl border border-sky-400/20 bg-sky-500/[0.05] p-5">
+            <div className="flex items-baseline justify-between">
+              <h2 className="text-[11px] uppercase tracking-[0.25em] text-sky-300/90">
+                Encorpei Carry — capacidade estimada de render acima da inflação
+              </h2>
+              <span className="text-[10px] text-slate-500">v1 · piso conservador · determinístico</span>
+            </div>
+            <div className={`mt-3 grid gap-3 ${cards.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
+              {cards.map((r) => (
+                <div key={r.ticker} className="rounded-xl border border-white/10 bg-slate-950/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 font-mono font-bold">
+                      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: r.cor }} />
+                      {r.ticker}
+                    </span>
+                    <span className="text-[10px] text-slate-500">confiança {r.carry?.confianca ?? "—"}</span>
+                  </div>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-sky-200">
+                    {r.carry?.carryReal != null
+                      ? `IPCA + ${(r.carry.carryReal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                      : "—"}
+                    <span className="ml-1 text-xs font-normal text-slate-500">a.a.</span>
+                  </p>
+                  {r.carry && r.carry.fatores.length > 0 && (
+                    <ul className="mt-2 space-y-0.5">
+                      {r.carry.fatores.slice(0, 4).map((f, i) => (
+                        <li key={i} className={`text-[11px] leading-snug ${
+                          f.direcao === "sustenta" ? "text-emerald-300/80" : "text-amber-300/80"
+                        }`}>
+                          {f.direcao === "sustenta" ? "✔" : "•"} {f.texto}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {r.carry?.carryReal == null && r.carry && (
+                    <p className="mt-2 text-[11px] leading-snug text-slate-500">{r.carry.explicacao}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[10.5px] leading-snug text-slate-500">
+              Como é calculado (v1): lucro dos últimos 12 meses ÷ valor de mercado a preços de
+              hoje — o rendimento REAL que o lucro atual entrega num cenário sem crescimento,
+              por isso &quot;piso&quot;. Lucros tendem a acompanhar a inflação, daí a leitura &quot;IPCA +&quot;.
+              A v2 somará o crescimento reinvestido (retenção × ROIC) quando o pipeline ler
+              dividendos da CVM. <span className="text-slate-400">Estimativa baseada nos
+              fundamentos atuais — NÃO é retorno garantido nem promessa de rentabilidade.</span>
+            </p>
+          </section>
 
           {/* placar por métrica */}
           <section className="rounded-2xl border border-white/5 bg-white/[0.03] p-4">

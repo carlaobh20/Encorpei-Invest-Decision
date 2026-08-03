@@ -82,6 +82,7 @@ export default async function Radar() {
                 <th className="py-1.5 pr-2 text-right">Margem</th>
                 <th className="py-1.5 pr-2 text-right">Dív/Patr</th>
                 <th className="py-1.5 pr-2 text-right">P/L</th>
+                <th className="py-1.5 pr-2 text-right">Carrego*</th>
                 <th className="py-1.5 pr-2 text-right">Confiança</th>
                 <th className="py-1.5 text-right">Prévia</th>
               </tr>
@@ -121,6 +122,11 @@ export default async function Radar() {
                   <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
                     {l.pl !== null ? `${l.pl.toFixed(1)}×` : "—"}
                   </td>
+                  <td className="py-1.5 pr-2 text-right font-mono text-sky-300/90">
+                    {l.carryReal !== null
+                      ? `IPCA+${(l.carryReal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                      : "—"}
+                  </td>
                   <td className="py-1.5 pr-2 text-right text-[11px] text-slate-500">{l.confianca}</td>
                   <td className={`py-1.5 text-right text-sm font-bold ${corNota(l.nota)}`}>
                     {l.componentes > 0 ? l.nota : "—"}
@@ -132,9 +138,11 @@ export default async function Radar() {
         </div>
         <p className="mt-2 text-[10.5px] leading-snug text-slate-600">
           Como ler: a prévia usa as mesmas réguas da nota oficial (qualidade, valuation e risco,
-          pesos v1). Bancos e seguradoras aparecem com confiança menor — ROIC e dívida não se
-          aplicam ao modelo deles e o sistema não finge que se aplicam. Empresa boa aqui é
-          convite para ESTUDAR e, se convencer, virar tese — nunca ordem de compra.
+          pesos v1). *Carrego = estimativa de PISO do Carry Engine v1 (lucro 12m ÷ preço, cenário
+          sem crescimento) — estimativa baseada nos fundamentos atuais, nunca retorno garantido.
+          Bancos e seguradoras aparecem com confiança menor — ROIC e dívida não se aplicam ao
+          modelo deles e o sistema não finge que se aplicam. Empresa boa aqui é convite para
+          ESTUDAR e, se convencer, virar tese — nunca ordem de compra.
         </p>
       </section>
     </Shell>

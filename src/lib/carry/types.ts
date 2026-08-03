@@ -1,0 +1,63 @@
+/**
+ * ENCORPEI CARRY ENGINE — tipos e contrato.
+ *
+ * O Carry estima a capacidade de uma empresa de aumentar patrimônio ACIMA
+ * DA INFLAÇÃO, expresso como "IPCA + X% a.a.". Princípios inegociáveis:
+ * - NUNCA é retorno garantido; toda exibição carrega o aviso.
+ * - 100% determinístico e reproduzível (IA nenhuma no cálculo).
+ * - Metodologia PLUGÁVEL: o resto do sistema depende só desta interface;
+ *   trocar a fórmula = novo CarryCalculator com nova versão, nunca editar
+ *   a antiga (mesma regra de versionamento do Score).
+ */
+
+export type FatorCarry = {
+  /** ex.: "Retorno sobre capital alto recompõe o lucro ano após ano" */
+  texto: string;
+  direcao: "sustenta" | "atencao";
+};
+
+export type CarryResultado = {
+  /** % real ao ano acima da inflação (0.062 = IPCA + 6,2%). null = incalculável. */
+  carryReal: number | null;
+  confianca: "alta" | "media" | "baixa";
+  /** frase-resumo SEMPRE presente — nunca mostrar só o número */
+  explicacao: string;
+  fatores: FatorCarry[];
+  versao: number;
+  metodo: string;
+};
+
+export type CarryEntrada = {
+  lucroLtm: number | null;
+  marketCap: number | null;
+  roic4: number | null;
+  margensDesvio: number | null; // desvio-padrão das margens trimestrais
+  caixaLiquido: boolean | null;
+  alavancagem: number | null; // dívida líquida / patrimônio
+  crescReceitaAnual: number | null; // 2025 vs 2024
+  ehFinanceira: boolean; // bancos/seguradoras: roic/dívida não se aplicam
+};
+
+/** Contrato do motor de cálculo — o "ativo intelectual" plugável. */
+export interface CarryCalculator {
+  versao: number;
+  metodo: string;
+  calcular(entrada: CarryEntrada): CarryResultado;
+}
+
+/**
+ * Configuração versionada (nunca pesos hardcoded espalhados).
+ * v2 planejada: componente de crescimento reinvestido = retenção × ROIC —
+ * DESTRAVA com a leitura de dividendos/payout no backfill da CVM.
+ */
+export const CARRY_CONFIG = {
+  versaoVigente: 1,
+  limiares: {
+    roicAlto: 0.15,
+    margemEstavel: 0.03,
+    margemInstavel: 0.05,
+    precoExigente: 0.05, // carry abaixo disso = preço come o retorno
+    alavancagemAlta: 1.0,
+    crescimentoBom: 0.05,
+  },
+} as const;
