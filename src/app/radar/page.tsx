@@ -132,9 +132,17 @@ export default async function Radar() {
                     {l.pl !== null ? `${l.pl.toFixed(1)}×` : "—"}
                   </td>
                   <td className="py-1.5 pr-2 text-right font-mono text-sky-300/90">
-                    {l.carryReal !== null
-                      ? `IPCA+${(l.carryReal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-                      : "—"}
+                    {l.carryReal !== null ? (
+                      <Link
+                        href={`/auditoria/carry/${l.ticker}`}
+                        className="hover:underline"
+                        title="Como foi calculado"
+                      >
+                        IPCA+{(l.carryReal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                      </Link>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="py-1.5 pr-2 text-right text-[11px] text-slate-500">{l.confianca}</td>
                   <td className={`py-1.5 text-right text-sm font-bold ${corNota(l.nota)}`}>

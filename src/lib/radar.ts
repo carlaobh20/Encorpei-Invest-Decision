@@ -26,6 +26,13 @@ export type LinhaRadar = {
   ey: number | null;
   carryReal: number | null;
   carryConfianca: "alta" | "media" | "baixa";
+  /** dados crus por trás do Carry — para o Audit Mode ("como foi calculado") */
+  carryLucroLtm: number | null;
+  carryMarketCap: number | null;
+  carryExplicacao: string;
+  carryFatores: { texto: string; direcao: "sustenta" | "atencao" }[];
+  carryVersao: number;
+  carryMetodo: string;
   modelo: ModeloAnalise | null;
   melhorDoSetor: boolean;
 };
@@ -161,6 +168,12 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
         ey,
         carryReal: carry.carryReal,
         carryConfianca: carry.confianca,
+        carryLucroLtm: ltm,
+        carryMarketCap: market_cap,
+        carryExplicacao: carry.explicacao,
+        carryFatores: carry.fatores,
+        carryVersao: carry.versao,
+        carryMetodo: carry.metodo,
         modelo: modeloDe(e.ticker),
         melhorDoSetor: false, // preenchido abaixo
       };
