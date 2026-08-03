@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Shell } from "@/components/Shell";
 import { calcularRadar, candidatas } from "@/lib/radar";
+import { ROTULO_MODELO } from "@/lib/setores";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,14 @@ export default async function Radar() {
                     )}
                   </td>
                   <td className="py-1.5 pr-2">
+                    <span className="mr-1 rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-500">
+                      {l.modelo ? ROTULO_MODELO[l.modelo] : "—"}
+                    </span>
+                    {l.melhorDoSetor && (
+                      <span className="mr-1 rounded-full border border-sky-400/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-sky-300" title="maior prévia dentro do seu modelo de negócio">
+                        nº1 do setor
+                      </span>
+                    )}
                     {l.temTese ? (
                       <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
                         tese ativa

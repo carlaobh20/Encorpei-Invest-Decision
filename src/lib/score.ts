@@ -23,14 +23,14 @@ export type ResultadoScore = {
 const pct = (v: number) =>
   `${(v * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
 
-function ptsRoic(r: number): number {
+export function ptsRoic(r: number): number {
   if (r >= 0.2) return 100;
   if (r >= 0.12) return 60 + ((r - 0.12) / 0.08) * 40;
   if (r >= 0.08) return 40 + ((r - 0.08) / 0.04) * 20;
   return Math.max(0, (r / 0.08) * 40);
 }
 
-function ptsMargem(m: number): number {
+export function ptsMargem(m: number): number {
   if (m >= 0.2) return 100;
   if (m >= 0.1) return 60 + ((m - 0.1) / 0.1) * 40;
   if (m >= 0.03) return 30 + ((m - 0.03) / 0.07) * 30;
@@ -47,7 +47,7 @@ function ptsBalanco(divida: number, pl: number): number {
   return 10;
 }
 
-function ptsValuation(earningsYield: number): number {
+export function ptsValuation(earningsYield: number): number {
   if (earningsYield < 0) return 10;
   if (earningsYield >= 0.12) return 100;
   if (earningsYield >= 0.08) return 70 + ((earningsYield - 0.08) / 0.04) * 30;
@@ -55,7 +55,7 @@ function ptsValuation(earningsYield: number): number {
   return (earningsYield / 0.05) * 40;
 }
 
-function ptsEstabilidade(desvioMargem: number): number {
+export function ptsEstabilidade(desvioMargem: number): number {
   if (desvioMargem <= 0.02) return 100;
   if (desvioMargem <= 0.05) return 70;
   if (desvioMargem <= 0.1) return 40;

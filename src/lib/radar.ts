@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { calcularScore } from "@/lib/score";
+import { calcularScorePorModelo } from "@/lib/score-setorial";
 import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
 import { carryVigente } from "@/lib/carry";
+import { modeloDe, type ModeloAnalise } from "@/lib/setores";
 
 /**
  * Cálculo do RADAR — prévia das 40 empresas pelas réguas versionadas v1.
@@ -25,6 +26,8 @@ export type LinhaRadar = {
   ey: number | null;
   carryReal: number | null;
   carryConfianca: "alta" | "media" | "baixa";
+  modelo: ModeloAnalise | null;
+  melhorDoSetor: boolean;
 };
 
 type Fund = {
@@ -90,11 +93,14 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
         .slice(0, 6)
         .map((f) => Number(f.margem_liquida));
 
-      const previa = calcularScore({
+      const plRec =
+        rec.patrimonio_liquido !== null ? Number(rec.patrimonio_liquido) : null;
+      const previa = calcularScorePorModelo(e.ticker, {
         roic: rec.roic !== null ? Number(rec.roic) : null,
+        roe: ltm !== null && plRec && plRec > 0 ? ltm / plRec : null,
         margem_liquida: rec.margem_liquida !== null ? Number(rec.margem_liquida) : null,
         divida_liquida: rec.divida_liquida !== null ? Number(rec.divida_liquida) : null,
-        patrimonio_liquido: rec.patrimonio_liquido !== null ? Number(rec.patrimonio_liquido) : null,
+        patrimonio_liquido: plRec,
         lucro_ltm: ltm,
         market_cap,
         margens_trimestrais: margensTri,
@@ -155,10 +161,20 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
         ey,
         carryReal: carry.carryReal,
         carryConfianca: carry.confianca,
+        modelo: modeloDe(e.ticker),
+        melhorDoSetor: false, // preenchido abaixo
       };
     })
     .filter((l): l is LinhaRadar => l !== null)
-    .sort((a, b) => b.nota - a.nota);
+    .sort((a, b) => b.nota - a.nota)
+    .map((l, _i, arr) => ({
+      ...l,
+      // "melhor DENTRO do seu modelo de negócio" — filosofia da Fase B
+      melhorDoSetor:
+        l.modelo !== null &&
+        l.componentes > 0 &&
+        arr.filter((x) => x.modelo === l.modelo && x.componentes > 0)[0]?.ticker === l.ticker,
+    }));
 }
 
 /** Candidatas a nova tese: sem tese, confiança razoável, nota com 3+ réguas. */
