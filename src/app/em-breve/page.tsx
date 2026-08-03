@@ -30,6 +30,11 @@ const MODULOS: Record<string, { nome: string; oque: string; destrava: string }> 
     oque: "Resumos e explicações em linguagem natural gerados por IA sobre os fatos que as regras produziram. A IA NUNCA decide nem pontua — só traduz.",
     destrava: "Configurar a chave da API do Claude na Vercel. As explicações atuais do sistema são geradas por regras (templates) — a IA as tornará mais ricas, não mais verdadeiras.",
   },
+  gestao: {
+    nome: "Management Intelligence",
+    oque: "Leitura da comunicação OFICIAL da administração (fatos relevantes, comunicados, apresentações, calls): o que prometeram, o que executaram, mudança de tom — sempre com o trecho original rastreável. O acervo de documentos já está sendo coletado diariamente do dataset IPE da CVM.",
+    destrava: "A interpretação por IA exige a chave da API do Claude na Vercel (custo por documento). A nota de CREDIBILIDADE da gestão só nasce depois de trimestres de prometido-vs-entregue medidos — nota sem histórico é decoração, e não fazemos decoração.",
+  },
   laboratorio: {
     nome: "Laboratório",
     oque: "Ambiente para testar novas réguas e pesos do algoritmo em rascunho, comparando com a versão vigente antes de promover (sempre criando versão nova, nunca sobrescrevendo).",

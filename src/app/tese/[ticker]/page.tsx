@@ -108,7 +108,7 @@ export default async function TesePage({
   const metricasAtuais: Record<string, number | null> = {
     roic: null, margem_liquida: null, divida_liquida: null, queda_preco_30d: null,
   };
-  const [{ data: fund }, { data: precos }, { data: gatilhos }, { data: eventos }, { data: scoreRows }] =
+  const [{ data: fund }, { data: precos }, { data: gatilhos }, { data: eventos }, { data: scoreRows }, { data: comunicadosRaw }] =
     await Promise.all([
       supabase
         .from("fundamentos")
@@ -139,7 +139,16 @@ export default async function TesePage({
         .eq("ticker", tese.ticker)
         .order("data", { ascending: false })
         .limit(1),
+      // acervo oficial (IPE/CVM) — se a tabela ainda não existir, vem null
+      supabase
+        .from("comunicados_oficiais")
+        .select("data_entrega, categoria, assunto, link")
+        .eq("ticker", tese.ticker)
+        .order("data_entrega", { ascending: false })
+        .limit(5),
     ]);
+  const comunicados =
+    (comunicadosRaw as { data_entrega: string; categoria: string; assunto: string; link: string }[] | null) ?? [];
 
   if (fund?.[0]) {
     metricasAtuais.margem_liquida = fund[0].margem_liquida;
@@ -381,6 +390,42 @@ export default async function TesePage({
                 </section>
               );
             })()}
+
+            {comunicados.length > 0 && (
+              <section className="rounded-2xl border border-white/5 bg-white/[0.03] p-4">
+                <div className="flex items-baseline justify-between">
+                  <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                    O que a empresa comunicou (oficial · CVM)
+                  </h2>
+                  <p className="text-[10px] text-slate-600">fonte primária — nunca notícia de terceiros</p>
+                </div>
+                <div className="mt-2 space-y-1.5">
+                  {comunicados.map((c, i) => (
+                    <a
+                      key={i}
+                      href={c.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-baseline justify-between gap-3 rounded-lg bg-white/[0.02] px-3 py-1.5 text-[12px] hover:bg-white/[0.05]"
+                    >
+                      <span className="min-w-0">
+                        <span className={`mr-2 rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wider ${
+                          /fato relevante/i.test(c.categoria)
+                            ? "border-amber-500/30 text-amber-300"
+                            : "border-white/10 text-slate-500"
+                        }`}>
+                          {c.categoria.slice(0, 24)}
+                        </span>
+                        <span className="text-slate-300">{c.assunto}</span>
+                      </span>
+                      <span className="shrink-0 text-[10px] text-slate-600">
+                        {c.data_entrega.split("-").reverse().slice(0, 2).join("/")}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/5 bg-white/[0.03] p-4">
               <div className="flex items-baseline justify-between">
