@@ -1,6 +1,26 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~20h20 (PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~20h35 (Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+
+## NOVO (03/08 ~20h35): CARTEIRA — BOTÕES EDITAR/EXCLUIR POR POSIÇÃO (pedido do Carlos) ✅ NO AR
+Carlos reportou: depois de registrar uma posição em `/carteira`, não
+dava pra fazer nada com ela — sem jeito visível de editar ou excluir.
+Na prática, as duas ações já existiam (reenviar o mesmo ticker
+ATUALIZA a posição; quantidade 0 REMOVE), mas dependiam de saber a
+regra escondida e redigitar tudo do zero — falha de descoberta na
+interface, não de funcionalidade.
+
+Corrigido com um componente cliente novo (`AcoesPosicao.tsx`) por
+linha da tabela: botão "editar" preenche o formulário à esquerda com
+ticker/quantidade/preço/data da linha clicada (só JS no navegador, não
+toca o banco); botão "excluir" envia quantidade=0 pro mesmo server
+action que já apagava, com uma confirmação (`confirm()`) antes de
+enviar pra evitar clique acidental. tsc + vitest (160/160) + build
+limpos, commit `632818c`, testado ao vivo: clique em "editar" na linha
+do VALE3 preencheu o formulário corretamente e rolou a tela até ele.
+"Excluir" não foi clicado em produção pra não apagar posição real do
+Carlos — a lógica é a mesma que já existia e já era usada (linha
+INTB3 tem "válida" há tempo, prova que o upsert por ticker funciona).
 
 ## ESTADO DAS FASES
 - Fase 0 ✅ · 1 ✅ · 2.5 ✅ · 3 ✅ · Fase 7 adiantada
