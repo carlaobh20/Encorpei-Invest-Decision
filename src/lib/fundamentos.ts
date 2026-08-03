@@ -3,24 +3,27 @@
  * Função pura — mesma regra em todo lugar, nunca duplicada.
  */
 
-type LinhaLucro = {
+type LinhaPeriodo = {
   competencia: string;
   fonte: string;
-  lucro_liquido: number | string | null;
 };
 
 /**
- * Lucro dos últimos 12 meses: último anual (DFP) + trimestres posteriores
- * (ITR) − trimestres equivalentes do ano anterior. Se faltar qualquer peça,
- * devolve null — o sistema nunca inventa o que não sabe.
+ * Valor dos últimos 12 meses de um campo somável (lucro, receita):
+ * último anual (DFP) + trimestres posteriores (ITR) − trimestres
+ * equivalentes do ano anterior. Se faltar qualquer peça, devolve null —
+ * o sistema nunca inventa o que não sabe.
  * `funds` deve vir ordenado do mais recente para o mais antigo.
  */
-export function lucroLTM(funds: LinhaLucro[]): number | null {
+export function ltmCampo<T extends LinhaPeriodo>(
+  funds: T[],
+  pega: (f: T) => number | string | null | undefined
+): number | null {
   const dfp = funds.find((f) => f.fonte === "cvm_dfp");
-  if (!dfp || dfp.lucro_liquido === null || dfp.lucro_liquido === undefined) {
+  if (!dfp || pega(dfp) === null || pega(dfp) === undefined) {
     return null;
   }
-  let ltm = Number(dfp.lucro_liquido);
+  let ltm = Number(pega(dfp));
   const posteriores = funds.filter(
     (f) => f.fonte === "cvm_itr" && f.competencia > dfp.competencia
   );
@@ -29,12 +32,19 @@ export function lucroLTM(funds: LinhaLucro[]): number | null {
     const eq = funds.find(
       (f) => f.fonte === "cvm_itr" && f.competencia === anoAnterior
     );
-    if (p.lucro_liquido === null || !eq || eq.lucro_liquido === null) {
+    if (pega(p) === null || pega(p) === undefined || !eq || pega(eq) === null || pega(eq) === undefined) {
       return null;
     }
-    ltm += Number(p.lucro_liquido) - Number(eq.lucro_liquido);
+    ltm += Number(pega(p)) - Number(pega(eq));
   }
   return ltm;
+}
+
+/** Lucro dos últimos 12 meses (atalho histórico — mesma regra do ltmCampo). */
+export function lucroLTM(
+  funds: (LinhaPeriodo & { lucro_liquido: number | string | null })[]
+): number | null {
+  return ltmCampo(funds, (f) => f.lucro_liquido);
 }
 
 /** Média dos ROICs dos últimos 4 trimestres (ITR) — a régua dos gatilhos. */
