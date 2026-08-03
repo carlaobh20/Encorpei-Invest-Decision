@@ -22,24 +22,18 @@ const pct = (v: number | null, casas = 1) =>
 
 async function salvarPosicao(formData: FormData) {
   "use server";
-  const { timingSafeEqual } = await import("node:crypto");
-  const chave = String(formData.get("chave") ?? "");
   const ticker = String(formData.get("ticker") ?? "").toUpperCase();
   const quantidade = Number(formData.get("quantidade") ?? 0);
   const precoMedio = Number(String(formData.get("preco_medio") ?? "0").replace(",", "."));
   const dataCompraRaw = String(formData.get("data_compra") ?? "").trim();
   const dataCompra = dataCompraRaw.length > 0 ? dataCompraRaw : null;
 
-  // Mesmo padrão do Diário: usuário logado dispensa o PIN.
+  // Chave/PIN removida em 03/08/2026 (mesma decisão do Diário): a proteção
+  // real é o Vercel Authentication (SSO), já ativo no domínio inteiro —
+  // bloqueia qualquer acesso de quem não é membro do time na Vercel. Uma
+  // segunda trava aqui era redundante para um app de usuário único.
   const { usuarioLogado } = await import("@/lib/supabase-auth");
   const user = await usuarioLogado();
-  if (!user) {
-    const pin = process.env.DIARIO_PIN ?? process.env.CRON_SECRET ?? "";
-    const a = Buffer.from(chave);
-    const b = Buffer.from(pin);
-    const ok = pin.length > 0 && a.length === b.length && timingSafeEqual(a, b);
-    if (!ok) return; // chave errada: ignora em silêncio
-  }
   if (!ticker || !Number.isFinite(quantidade) || quantidade < 0) return;
 
   const admin = getSupabaseAdmin();
@@ -226,13 +220,6 @@ export default async function Carteira() {
                 CDI/Ibovespa fica indisponível SÓ para este papel.
               </p>
             </div>
-            <input
-              type="password"
-              name="chave"
-              required
-              placeholder="Chave do sistema"
-              className="w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-slate-200 placeholder:text-slate-600 focus:border-sky-400/50 focus:outline-none"
-            />
             <button
               type="submit"
               className="w-full rounded-lg bg-sky-600 px-4 py-2 font-medium text-white transition-colors hover:bg-sky-500"
@@ -240,7 +227,8 @@ export default async function Carteira() {
               Salvar posição
             </button>
             <p className="text-[10px] leading-snug text-slate-600">
-              Mesma chave do Diário. Registrar o mesmo ticker de novo ATUALIZA a
+              O acesso a este app já é protegido por login na Vercel — sem
+              chave extra aqui. Registrar o mesmo ticker de novo ATUALIZA a
               posição (estado atual). Quantidade 0 remove a posição. A decisão em
               si (comprei/vendi e por quê) merece um registro no{" "}
               <Link href="/diario" className="text-sky-400 hover:underline">
