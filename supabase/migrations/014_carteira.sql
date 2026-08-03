@@ -12,7 +12,9 @@ create table if not exists posicoes (
   preco_medio numeric not null check (preco_medio > 0),
   atualizado_em timestamptz not null default now(),
   criado_em timestamptz not null default now(),
-  unique (ticker, user_id)
+  -- nulls not distinct: com user_id ainda NULL (pré-Auth), o mesmo ticker
+  -- NÃO pode duplicar — sem isso o upsert criaria posições repetidas
+  unique nulls not distinct (ticker, user_id)
 );
 
 alter table posicoes enable row level security;

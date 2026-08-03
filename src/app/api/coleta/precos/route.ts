@@ -124,6 +124,56 @@ export async function GET(req: NextRequest) {
       } catch {
         /* tabela 010 pendente — segue o jogo */
       }
+
+      // fluxo de caixa (DFC/CVM) — alimenta os níveis 2-4 do Carry Engine.
+      // Guardado: qualquer falha aqui não derruba a coleta de preços.
+      try {
+        const rFlx = await fetch(
+          "https://raw.githubusercontent.com/carlaobh20/Encorpei-Invest-Decision/main/tools/dados/fluxo_caixa.json",
+          { cache: "no-store" }
+        );
+        if (rFlx.ok) {
+          const jf = (await rFlx.json()) as { fluxo: Record<string, unknown>[] };
+          let nFlx = 0;
+          for (let i = 0; i < (jf.fluxo ?? []).length; i += 200) {
+            const { error } = await supabase
+              .from("fluxo_caixa")
+              .upsert(jf.fluxo.slice(i, i + 200), {
+                onConflict: "ticker,competencia,fonte,inicio",
+              });
+            if (error) break;
+            nFlx += Math.min(200, jf.fluxo.length - i);
+          }
+          fundamentos_sync += ` · ${nFlx} fluxos de caixa`;
+        }
+      } catch {
+        /* tabela 011 pendente — segue o jogo */
+      }
+
+      // Relatório Focus (BCB) — expectativas macro oficiais.
+      try {
+        const rFoc = await fetch(
+          "https://raw.githubusercontent.com/carlaobh20/Encorpei-Invest-Decision/main/tools/dados/macro_focus.json",
+          { cache: "no-store" }
+        );
+        if (rFoc.ok) {
+          const jm = (await rFoc.json()) as { focus: Record<string, unknown>[] };
+          let nFoc = 0;
+          for (let i = 0; i < (jm.focus ?? []).length; i += 500) {
+            const { error } = await supabase
+              .from("macro_focus")
+              .upsert(jm.focus.slice(i, i + 500), {
+                onConflict: "indicador,data_pesquisa,ano_referencia",
+                ignoreDuplicates: true,
+              });
+            if (error) break;
+            nFoc += Math.min(500, jm.focus.length - i);
+          }
+          fundamentos_sync += ` · ${nFoc} obs. Focus`;
+        }
+      } catch {
+        /* tabela 012 pendente — segue o jogo */
+      }
     } else {
       fundamentos_sync = `JSON indisponível (HTTP ${rSync.status})`;
     }
