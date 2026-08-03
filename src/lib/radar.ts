@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { calcularScorePorModelo } from "@/lib/score-setorial";
 import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
 import { carryVigente } from "@/lib/carry";
-import { modeloDe, type ModeloAnalise } from "@/lib/setores";
+import { ehModeloFinanceiro, indicadorPermitido, modeloDe, type ModeloAnalise } from "@/lib/setores";
+import { marketCapSelecionado } from "@/lib/marketcap";
 
 /**
  * Cálculo do RADAR — prévia das 40 empresas pelas réguas versionadas v1.
@@ -91,8 +92,15 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
       const preco = precoPorTicker.get(e.ticker);
       const ehUnit = e.ticker.endsWith("11");
       const qtd = acoesPorTicker.get(e.ticker);
-      const mcOficial = !ehUnit && qtd && preco?.fechamento ? qtd * Number(preco.fechamento) : null;
-      const market_cap = mcOficial ?? (preco?.market_cap ? Number(preco.market_cap) : null);
+      // auditoria de 03/08/2026: acoes_totais pode estar desatualizado (ex.:
+      // desdobramento que a CVM ainda não refilou) — prefere o dado ao vivo
+      // da própria fonte quando a divergência é grande. Ver src/lib/marketcap.ts.
+      const market_cap = marketCapSelecionado({
+        qtdAcoes: qtd,
+        fechamento: preco?.fechamento,
+        marketCapMercado: preco?.market_cap,
+        ehUnit,
+      }).valor;
 
       const ltm = lucroLTM(funds);
       const margensTri = funds
@@ -113,11 +121,19 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
         margens_trimestrais: margensTri,
       });
 
-      const roic4 = roicMedia4Tri(funds);
+      // Sector Intelligence (auditoria de 03/08/2026): ROIC e dívida líquida
+      // não existem no sentido industrial para banco/seguradora. Antes,
+      // essas colunas eram exibidas sempre que o campo bruto não era NULL
+      // no banco — dado, não modelo — o que fazia BBDC4/BBAS3/BBSE3/CXSE3
+      // mostrarem "dívida" e "ROIC" reais mas sem sentido. Gate explícito.
+      const roic4 = indicadorPermitido(e.ticker, "roic") ? roicMedia4Tri(funds) : null;
       const ey = ltm !== null && market_cap && market_cap > 0 ? ltm / market_cap : null;
       const pl = ey !== null && ey > 0 ? 1 / ey : null;
       const alav =
-        rec.divida_liquida !== null && rec.patrimonio_liquido !== null && Number(rec.patrimonio_liquido) > 0
+        indicadorPermitido(e.ticker, "divida_liquida") &&
+        rec.divida_liquida !== null &&
+        rec.patrimonio_liquido !== null &&
+        Number(rec.patrimonio_liquido) > 0
           ? Number(rec.divida_liquida) / Number(rec.patrimonio_liquido)
           : null;
 
@@ -142,13 +158,16 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
               }, 0) / margensTri.length
             )
           : null;
-      const ehFinanceira = rec.roic === null && rec.divida_liquida === null;
+      const ehFinanceira = ehModeloFinanceiro(e.ticker);
+      const caixaLiquido = indicadorPermitido(e.ticker, "divida_liquida") && rec.divida_liquida !== null
+        ? Number(rec.divida_liquida) <= 0
+        : null;
       const carry = carryVigente().calcular({
         lucroLtm: ltm,
         marketCap: market_cap,
-        roic4: roicMedia4Tri(funds),
+        roic4,
         margensDesvio: desvioMargens,
-        caixaLiquido: rec.divida_liquida !== null ? Number(rec.divida_liquida) <= 0 : null,
+        caixaLiquido,
         alavancagem: alav,
         crescReceitaAnual: crescReceita,
         ehFinanceira,
@@ -162,7 +181,7 @@ export async function calcularRadar(sb: SupabaseClient): Promise<LinhaRadar[]> {
         componentes: previa.decomposicao.length,
         roic4,
         margem: rec.margem_liquida !== null ? Number(rec.margem_liquida) : null,
-        caixaLiquido: rec.divida_liquida !== null && Number(rec.divida_liquida) <= 0,
+        caixaLiquido: caixaLiquido === true,
         alav,
         pl,
         ey,

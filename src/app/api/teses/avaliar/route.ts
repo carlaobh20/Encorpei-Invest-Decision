@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { calcularScore } from "@/lib/score";
 import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
+import { indicadorPermitido } from "@/lib/setores";
+import { marketCapSelecionado } from "@/lib/marketcap";
 
 /**
  * MOTOR DE GATILHOS — coração da Tese Viva.
@@ -59,10 +61,17 @@ export async function GET(req: NextRequest) {
     if (fund?.[0]) {
       // margem e dívida: retrato mais recente
       m.margem_liquida = fund[0].margem_liquida;
-      m.divida_liquida = fund[0].divida_liquida;
+      // Sector Intelligence: nunca deixa um gatilho de ROIC/dívida disparar
+      // com dado que não faz sentido pro modelo do ticker (banco/seguradora)
+      // — mesma trava do CI em setores.test.ts, aplicada aqui na leitura.
+      m.divida_liquida = indicadorPermitido(tese.ticker, "divida_liquida")
+        ? fund[0].divida_liquida
+        : null;
       // ROIC: média dos últimos 4 trimestres (mata a sazonalidade que
       // gerou o falso alarme da Intelbras em 31/07/2026)
-      m.roic = roicMedia4Tri(fund) ?? fund[0].roic;
+      m.roic = indicadorPermitido(tese.ticker, "roic")
+        ? roicMedia4Tri(fund) ?? fund[0].roic
+        : null;
     }
 
     const desde = new Date(Date.now() - 30 * 86_400_000)
@@ -183,28 +192,45 @@ export async function GET(req: NextRequest) {
     // KLBN11 = 5 papéis), então preço da unit × total de ações NÃO é o
     // valor de mercado. Para elas, só o fallback da brapi serve.
     const ehUnit = tese.ticker.endsWith("11");
-    const mcOficial =
-      !ehUnit && qtdAcoes && fechRec ? qtdAcoes * fechRec : null;
+    // auditoria de 03/08/2026: acoes_totais (CVM) pode estar desatualizado
+    // (ex.: desdobramento ainda não refilado) — quando isso diverge muito
+    // do market_cap AO VIVO que a própria brapi reporta, confia no dado ao
+    // vivo em vez do calculado a partir de uma contagem de ações velha.
+    // Ver src/lib/marketcap.ts (mesma correção usada no Radar/Comparador).
+    const marketCap = marketCapSelecionado({
+      qtdAcoes,
+      fechamento: fechRec,
+      marketCapMercado: precoMc?.[0]?.market_cap ? Number(precoMc[0].market_cap) : null,
+      ehUnit,
+    }).valor;
 
     const margensTri = funds
       .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)
       .slice(0, 6)
       .map((f) => Number(f.margem_liquida));
 
+    // Sector Intelligence (auditoria de 03/08/2026): ROIC e dívida líquida
+    // não existem no sentido industrial para banco/seguradora — sem este
+    // gate, o SCORE OFICIAL (gravado, imutável) de BBDC4/BBAS3/BBSE3/CXSE3
+    // ficava contaminado por "dívida"/"ROIC" que não fazem sentido para o
+    // modelo, sempre que o filing da CVM populava esses campos por acaso.
     const resultado = calcularScore({
-      roic: maisRecente.roic !== null ? Number(maisRecente.roic) : null,
+      roic:
+        indicadorPermitido(tese.ticker, "roic") && maisRecente.roic !== null
+          ? Number(maisRecente.roic)
+          : null,
       margem_liquida:
         maisRecente.margem_liquida !== null ? Number(maisRecente.margem_liquida) : null,
       divida_liquida:
-        maisRecente.divida_liquida !== null ? Number(maisRecente.divida_liquida) : null,
+        indicadorPermitido(tese.ticker, "divida_liquida") && maisRecente.divida_liquida !== null
+          ? Number(maisRecente.divida_liquida)
+          : null,
       patrimonio_liquido:
         maisRecente.patrimonio_liquido !== null
           ? Number(maisRecente.patrimonio_liquido)
           : null,
       lucro_ltm,
-      market_cap:
-        mcOficial ??
-        (precoMc?.[0]?.market_cap ? Number(precoMc[0].market_cap) : null),
+      market_cap: marketCap,
       margens_trimestrais: margensTri,
     });
 

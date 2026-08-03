@@ -105,3 +105,19 @@ export function indicadorPermitido(ticker: string, indicador: string): boolean {
   if (!m) return true;
   return !INDICADORES_EXCLUIDOS[m].includes(indicador);
 }
+
+/**
+ * Substitui a heurística antiga `roic === null && divida_liquida === null`
+ * (usada em radar.ts, compounder-dados.ts e comparar/page.tsx antes da
+ * auditoria de 03/08/2026). Aquela heurística era DIRIGIDA POR DADO: um
+ * banco cujo filing da CVM populou por acaso os campos de ROIC/dívida
+ * (BBDC4, BBAS3, BBSE3, CXSE3) passava a ser tratado como não-financeira,
+ * exibindo dívida/ROIC industriais que não fazem sentido para o modelo.
+ *
+ * Esta função é DIRIGIDA POR MODELO (Sector Intelligence), então nunca
+ * varia com o acaso de qual conta contábil a CVM populou naquele
+ * trimestre — fica sempre em sincronia com INDICADORES_EXCLUIDOS.
+ */
+export function ehModeloFinanceiro(ticker: string): boolean {
+  return !indicadorPermitido(ticker, "roic") || !indicadorPermitido(ticker, "divida_liquida");
+}

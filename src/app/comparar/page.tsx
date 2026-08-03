@@ -12,7 +12,8 @@ import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
 import { escadaCarry, type CarryResultado, type DegrauCarry } from "@/lib/carry";
 import { calcularCompounder } from "@/lib/compounder/v1";
-import { modeloDe, ROTULO_MODELO } from "@/lib/setores";
+import { ehModeloFinanceiro, indicadorPermitido, modeloDe, ROTULO_MODELO } from "@/lib/setores";
+import { marketCapSelecionado } from "@/lib/marketcap";
 
 export const dynamic = "force-dynamic";
 
@@ -157,8 +158,15 @@ export default async function Comparar({
       const preco = precoDe(t);
       const ehUnit = t.endsWith("11");
       const qtd = acoesDe.get(t);
-      const mcOficial = !ehUnit && qtd && preco?.fechamento ? qtd * Number(preco.fechamento) : null;
-      const mc = mcOficial ?? (preco?.market_cap ? Number(preco.market_cap) : null);
+      // auditoria de 03/08/2026: mesma correção do radar.ts — acoes_totais
+      // pode estar desatualizado (desdobramento ainda não refilado na CVM);
+      // não confia cego nele quando diverge muito do valor ao vivo da fonte.
+      const mc = marketCapSelecionado({
+        qtdAcoes: qtd,
+        fechamento: preco?.fechamento,
+        marketCapMercado: preco?.market_cap,
+        ehUnit,
+      }).valor;
 
       const lucroLtm = ltmCampo(fs, (f) => f.lucro_liquido);
       const receitaLtm = ltmCampo(fs, (f) => f.receita_liquida);
@@ -191,25 +199,42 @@ export default async function Comparar({
           : null;
 
       const oficial = scoreDe(t);
+      // calcularScore (prévia genérica) não é sector-aware como
+      // calcularScorePorModelo (radar.ts) — sem este gate, um banco sem
+      // score oficial ainda calculado teria ROIC/dívida industriais
+      // contaminando a nota. Mesma correção de 03/08/2026.
       const previa = calcularScore({
-        roic: rec?.roic != null ? Number(rec.roic) : null,
+        roic: indicadorPermitido(t, "roic") && rec?.roic != null ? Number(rec.roic) : null,
         margem_liquida: rec?.margem_liquida != null ? Number(rec.margem_liquida) : null,
-        divida_liquida: rec?.divida_liquida != null ? Number(rec.divida_liquida) : null,
+        divida_liquida:
+          indicadorPermitido(t, "divida_liquida") && rec?.divida_liquida != null
+            ? Number(rec.divida_liquida)
+            : null,
         patrimonio_liquido: pl,
         lucro_ltm: lucroLtm,
         market_cap: mc,
         margens_trimestrais: margensTri,
       });
 
-      const roic4 = roicMedia4Tri(fs);
-      const alav = rec?.divida_liquida != null && pl && pl > 0 ? Number(rec.divida_liquida) / pl : null;
-      const ehFinanceira = (rec?.roic ?? null) === null && (rec?.divida_liquida ?? null) === null;
+      // Sector Intelligence (auditoria de 03/08/2026): dirigido por MODELO,
+      // não por dado bruto — antes um banco cujo filing da CVM populava
+      // roic/divida_liquida por acaso aparecia com dívida/ROIC industriais.
+      const roic4 = indicadorPermitido(t, "roic") ? roicMedia4Tri(fs) : null;
+      const alav =
+        indicadorPermitido(t, "divida_liquida") && rec?.divida_liquida != null && pl && pl > 0
+          ? Number(rec.divida_liquida) / pl
+          : null;
+      const ehFinanceira = ehModeloFinanceiro(t);
+      const caixaLiquido =
+        indicadorPermitido(t, "divida_liquida") && rec?.divida_liquida != null
+          ? Number(rec.divida_liquida) <= 0
+          : null;
       const escada = escadaCarry({
         lucroLtm,
         marketCap: mc,
         roic4,
         margensDesvio: desvio,
-        caixaLiquido: rec?.divida_liquida != null ? Number(rec.divida_liquida) <= 0 : null,
+        caixaLiquido,
         alavancagem: alav,
         crescReceitaAnual: cresc((f) => (f.receita_liquida != null ? Number(f.receita_liquida) : null)),
         ehFinanceira,
@@ -251,8 +276,11 @@ export default async function Comparar({
         margemBruta: rec?.margem_bruta != null ? Number(rec.margem_bruta) : null,
         margemLiq: rec?.margem_liquida != null ? Number(rec.margem_liquida) : null,
         desvio,
-        divLiq: rec?.divida_liquida != null ? Number(rec.divida_liquida) : null,
-        alav: rec?.divida_liquida != null && pl && pl > 0 ? Number(rec.divida_liquida) / pl : null,
+        divLiq:
+          indicadorPermitido(t, "divida_liquida") && rec?.divida_liquida != null
+            ? Number(rec.divida_liquida)
+            : null,
+        alav,
         crescReceita: cresc((f) => (f.receita_liquida != null ? Number(f.receita_liquida) : null)),
         crescLucro: cresc((f) => (f.lucro_liquido != null ? Number(f.lucro_liquido) : null)),
         plRatio: lucroLtm !== null && lucroLtm > 0 && mc ? mc / lucroLtm : null,

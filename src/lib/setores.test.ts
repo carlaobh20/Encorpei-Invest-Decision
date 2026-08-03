@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   INDICADORES_EXCLUIDOS,
   MODELO_POR_TICKER,
+  ehModeloFinanceiro,
   indicadorPermitido,
   modeloDe,
 } from "./setores";
@@ -63,5 +64,45 @@ describe("indicadores proibidos por modelo", () => {
     for (const m of Object.values(MODELO_POR_TICKER)) {
       expect(INDICADORES_EXCLUIDOS[m]).toBeDefined();
     }
+  });
+});
+
+describe("ehModeloFinanceiro — auditoria de 03/08/2026", () => {
+  /**
+   * Antes desta função existir, radar.ts/compounder-dados.ts/comparar
+   * calculavam "é financeira?" olhando se roic/divida_liquida vieram NULL
+   * no banco — dado, não modelo. Isso fazia BBDC4, BBAS3, BBSE3 e CXSE3
+   * (cujos filings da CVM às vezes populam esses campos por acidente)
+   * serem tratados como não-financeiras, exibindo dívida/ROIC industriais
+   * que não existem para um banco/seguradora. Esta função tem que valer
+   * SEMPRE para todo banco e toda seguradora, não importa o que está (ou
+   * não está) preenchido no banco de dados.
+   */
+  it("todo banco é modelo financeiro, independentemente do dado bruto", () => {
+    for (const [t, m] of Object.entries(MODELO_POR_TICKER)) {
+      if (m === "banco") expect(ehModeloFinanceiro(t)).toBe(true);
+    }
+  });
+
+  it("toda seguradora é modelo financeiro, independentemente do dado bruto", () => {
+    for (const [t, m] of Object.entries(MODELO_POR_TICKER)) {
+      if (m === "seguradora") expect(ehModeloFinanceiro(t)).toBe(true);
+    }
+  });
+
+  it("casos-âncora do prompt de 31/08: BBDC4/BBAS3/BBSE3/CXSE3 nunca aparecem como industriais", () => {
+    expect(ehModeloFinanceiro("BBDC4")).toBe(true);
+    expect(ehModeloFinanceiro("BBAS3")).toBe(true);
+    expect(ehModeloFinanceiro("BBSE3")).toBe(true);
+    expect(ehModeloFinanceiro("CXSE3")).toBe(true);
+  });
+
+  it("industriais e infraestrutura financeira (B3SA3) não são 'financeira' nesta régua", () => {
+    expect(ehModeloFinanceiro("WEGE3")).toBe(false);
+    expect(ehModeloFinanceiro("B3SA3")).toBe(false);
+  });
+
+  it("ticker sem modelo cadastrado nunca é considerado financeiro (não estima)", () => {
+    expect(ehModeloFinanceiro("TICKER_INEXISTENTE")).toBe(false);
   });
 });

@@ -2,7 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ltmCampo, lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularCompounder } from "@/lib/compounder/v1";
 import { sensibilidadeJuros, type CategoriaSensibilidade } from "@/lib/compounder/sensibilidade-juros";
-import { modeloDe, type ModeloAnalise } from "@/lib/setores";
+import { ehModeloFinanceiro, indicadorPermitido, modeloDe, type ModeloAnalise } from "@/lib/setores";
+import { marketCapSelecionado } from "@/lib/marketcap";
 import type { CompounderResultado } from "@/lib/compounder/types";
 
 /**
@@ -54,7 +55,7 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
           "ticker, competencia, fonte, receita_liquida, lucro_liquido, margem_liquida, roic, divida_liquida, patrimonio_liquido"
         )
         .order("competencia", { ascending: false }),
-      sb.from("precos_diarios").select("ticker, data, fechamento").order("data", { ascending: false }),
+      sb.from("precos_diarios").select("ticker, data, fechamento, market_cap").order("data", { ascending: false }),
       sb.from("acoes_totais").select("ticker, qtd_acoes"),
       sb
         .from("fluxo_caixa")
@@ -82,9 +83,9 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
     fluxoPorTicker.set(f.ticker, arr);
   }
 
-  const precoPorTicker = new Map<string, number>();
-  for (const p of (precosRaw as { ticker: string; fechamento: number }[]) ?? []) {
-    if (!precoPorTicker.has(p.ticker)) precoPorTicker.set(p.ticker, Number(p.fechamento));
+  const precoPorTicker = new Map<string, { fechamento: number; market_cap: number | null }>();
+  for (const p of (precosRaw as { ticker: string; fechamento: number; market_cap: number | null }[]) ?? []) {
+    if (!precoPorTicker.has(p.ticker)) precoPorTicker.set(p.ticker, p);
   }
   const acoesPorTicker = new Map(
     (((acoesRaw as { ticker: string; qtd_acoes: number }[]) ?? [])).map((a) => [a.ticker, Number(a.qtd_acoes)])
@@ -99,7 +100,16 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
 
     const preco = precoPorTicker.get(e.ticker);
     const qtd = acoesPorTicker.get(e.ticker);
-    const marketCap = qtd && preco ? qtd * preco : null;
+    const ehUnit = e.ticker.endsWith("11");
+    // auditoria de 03/08/2026: mesma correção do radar.ts — não confia cego
+    // em qtd_acoes × fechamento quando diverge muito do valor ao vivo da
+    // fonte (acoes_totais pode estar desatualizado). Ver src/lib/marketcap.ts.
+    const marketCap = marketCapSelecionado({
+      qtdAcoes: qtd,
+      fechamento: preco?.fechamento,
+      marketCapMercado: preco?.market_cap,
+      ehUnit,
+    }).valor;
 
     const dfps = funds
       .filter((f) => f.fonte === "cvm_dfp")
@@ -109,10 +119,13 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
     const lucroAnoAtual = dfps[0]?.lucro_liquido !== null && dfps[0] ? Number(dfps[0].lucro_liquido) : null;
     const lucroAnoAnterior = dfps[1]?.lucro_liquido !== null && dfps[1] ? Number(dfps[1].lucro_liquido) : null;
 
-    const roic4tri = roicMedia4Tri(funds);
-    const lucroLtm = lucroLTM(funds);
     const rec = funds[0];
-    const ehFinanceira = rec.roic === null && rec.divida_liquida === null;
+    // Sector Intelligence (auditoria de 03/08/2026): dirigido por MODELO, não
+    // por dado bruto — banco/seguradora nunca entra no ROIC do Compounder,
+    // independente de o campo estar preenchido por acaso naquele trimestre.
+    const roic4tri = indicadorPermitido(e.ticker, "roic") ? roicMedia4Tri(funds) : null;
+    const lucroLtm = lucroLTM(funds);
+    const ehFinanceira = ehModeloFinanceiro(e.ticker);
 
     const margensTrimestrais = funds
       .filter((f) => f.fonte === "cvm_itr" && f.margem_liquida !== null)
@@ -142,7 +155,10 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
     });
 
     const alavancagem =
-      rec.divida_liquida !== null && rec.patrimonio_liquido !== null && Number(rec.patrimonio_liquido) > 0
+      indicadorPermitido(e.ticker, "divida_liquida") &&
+      rec.divida_liquida !== null &&
+      rec.patrimonio_liquido !== null &&
+      Number(rec.patrimonio_liquido) > 0
         ? Number(rec.divida_liquida) / Number(rec.patrimonio_liquido)
         : null;
     const retencaoComp = resultado.componentes.find((c) => c.id === "reinvestimento");
