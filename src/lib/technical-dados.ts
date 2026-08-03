@@ -31,14 +31,33 @@ type Preco = {
   volume: number | null;
 };
 
-export async function calcularTechnicals(sb: SupabaseClient): Promise<LinhaTechnical[]> {
-  const [{ data: empresasRaw }, { data: precosRaw }, { data: tesesRaw }] = await Promise.all([
-    sb.from("empresas").select("ticker, nome").eq("ativo", true),
-    sb
+/**
+ * PostgREST corta silenciosamente em `db.max_rows` (tipicamente 1000) —
+ * um único `.select().limit(20000)` NÃO traz tudo, ele só traz as
+ * primeiras ~1000 linhas em ordem global de data, o que dá poucas linhas
+ * por ticker (e ainda por cima enviesado pros tickers mais antigos).
+ * Pagina com `.range()` até a página vir mais curta que o tamanho pedido.
+ */
+async function buscarTodosPrecos(sb: SupabaseClient): Promise<Preco[]> {
+  const PAGINA = 1000;
+  const linhas: Preco[] = [];
+  for (let inicio = 0; ; inicio += PAGINA) {
+    const { data, error } = await sb
       .from("precos_diarios")
       .select("ticker, data, abertura, maxima, minima, fechamento, volume")
       .order("data", { ascending: true })
-      .limit(20000),
+      .range(inicio, inicio + PAGINA - 1);
+    if (error || !data || data.length === 0) break;
+    linhas.push(...(data as Preco[]));
+    if (data.length < PAGINA) break;
+  }
+  return linhas;
+}
+
+export async function calcularTechnicals(sb: SupabaseClient): Promise<LinhaTechnical[]> {
+  const [{ data: empresasRaw }, precosRaw, { data: tesesRaw }] = await Promise.all([
+    sb.from("empresas").select("ticker, nome").eq("ativo", true),
+    buscarTodosPrecos(sb),
     sb.from("teses").select("ticker").eq("ativa", true),
   ]);
 
@@ -46,7 +65,7 @@ export async function calcularTechnicals(sb: SupabaseClient): Promise<LinhaTechn
   const comTese = new Set((((tesesRaw as { ticker: string }[]) ?? [])).map((t) => t.ticker));
 
   const precosPorTicker = new Map<string, Preco[]>();
-  for (const p of (precosRaw as Preco[]) ?? []) {
+  for (const p of precosRaw) {
     const arr = precosPorTicker.get(p.ticker) ?? [];
     arr.push(p); // já vem ordenado por data ascendente (mais antigo → mais recente)
     precosPorTicker.set(p.ticker, arr);
