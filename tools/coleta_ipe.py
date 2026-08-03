@@ -156,7 +156,7 @@ on conflict (ticker, protocolo) do nothing;
         rel.append(f"- {t}: {por_ticker[t]}")
     if descartes_conflito:
         rel.append("\n## Guardrail (2+ razões sociais — descartados):")
-        rel += [f"- {d}" for d in sorted(descartes_conflito)]
+        rel.extend(f"- {d}" for d in sorted(descartes_conflito))
     with open("tools/ipe_relatorio.md", "w") as f:
         f.write("\n".join(rel))
     print(f"ok: {len(linhas)} comunicações de {len(por_ticker)} empresas")
