@@ -1,9 +1,9 @@
 name: Coleta IPE (comunicações oficiais CVM)
 
-# Roda todo dia útil de manhã: baixa o dataset IPE da CVM (fatos
-# relevantes, comunicados, apresentações), filtra o universo e commita a
-# migração 010 atualizada + relatório. Disparo manual: tocar
-# tools/.trigger-ipe e dar push, ou workflow_dispatch.
+# Baixa o dataset IPE da CVM (fatos relevantes, comunicados, apresentações),
+# filtra o universo e commita a migração 010 + relatório. O stdout do script
+# é SEMPRE commitado (tools/ipe_stdout.txt) — diagnóstico auditável.
+# Disparo manual: tocar tools/.trigger-ipe e push, ou workflow_dispatch.
 
 on:
   workflow_dispatch:
@@ -24,15 +24,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pandas requests
-      - run: python tools/coleta_ipe.py
-        working-directory: .
-        env:
-          PYTHONPATH: tools
-      - if: always()
+      - name: Coletar e commitar (sempre)
         run: |
+          pip install pandas requests
+          python tools/coleta_ipe.py > tools/ipe_stdout.txt 2>&1 || echo "script falhou (ver stdout)" >> tools/ipe_stdout.txt
           git config user.name "encorpei-bot"
           git config user.email "actions@github.com"
-          git add -f tools/ipe_relatorio.md 2>/dev/null || echo "sem relatório"
+          git add -f tools/ipe_stdout.txt
+          git add tools/ipe_relatorio.md 2>/dev/null || true
           git add supabase/migrations/010_seed_comunicados.sql 2>/dev/null || true
-          git diff --cached --quiet || (git commit -m "IPE: comunicações oficiais atualizadas (automático)" && git push)
+          git diff --cached --quiet || (git commit -m "IPE: coleta de comunicações oficiais (automático)" && git push)
