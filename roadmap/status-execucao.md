@@ -1,6 +1,48 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~20h35 (Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1: Home vira Meu Patrimônio, com série real vs CDI/IPCA/Ibovespa, Decision Feed e Saúde da Carteira — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~21h (Home "Meu Patrimônio" redesenhada — visual dark glass premium, hierarquia fixa 01→07 pedida pelo Carlos, todo número real — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+
+## NOVO (03/08 ~21h): HOME "MEU PATRIMÔNIO" REDESENHADA — VISUAL DARK GLASS PREMIUM ✅ NO AR
+Carlos mandou uma especificação completa de redesign (inspiração Bloomberg/
+Koyfin/BlackRock Aladdin/Apple) com um mockup em screenshot já pronto
+visualmente, e pediu "faça da maneira que está na foto". Achado crítico
+antes de construir: os números do mockup eram TODOS placeholders inventados
+(patrimônio R$990.602 contra o real R$1,24M da carteira agora; Sharpe 1,34;
+Confluence 92; Carry "IPCA+11,4%"; tickers de exemplo TM53/CXSE3/ENBR3) —
+replicar isso literalmente violaria a regra de fundação do projeto (nunca
+número decorativo). Decisão: reproduzir o ESTILO e a HIERARQUIA do mockup
+(01 Patrimônio → 02 Performance → 03 Minha Carteira → 04 Oportunidades →
+05 Alertas → 06 IA → 07 Empresas, nessa ordem fixa), mas com cada número
+vindo de cálculo real — nunca copiando os valores da imagem.
+
+Implementado (delegado a subagente, revisado e verificado por mim antes do
+push): fundo dark #07111E "glass" em `Shell.tsx` (aplicado a todas as
+páginas); gráfico principal novo (`GraficoPatrimonio.tsx`, SVG client-side
+sem lib nova) com abas de período (1M/3M/6M/12M/24M/5A/desde o início) e
+tooltip por proximidade de mouse — testado ao vivo, mostra "—" honesto
+quando um benchmark não tem dado naquele ponto, nunca interpola; Sharpe já
+existia, ganhou dois vizinhos sob o MESMO gate honesto (aporte único + 20
+pregões): **Sortino** (downside deviation) e **Volatilidade anualizada**
+(`patrimonio.ts`); **Confluence médio da carteira** novo, ponderado por
+peso com cobertura reportada (`portfolio-health.ts`,
+`confluenciaMediaPonderada`). Nenhuma funcionalidade antiga foi removida —
+Decision Feed, Radar, Universo por nota, Diário, cenário macro Focus, tudo
+continua, só reorganizado na nova hierarquia.
+
+GATED por falta de dado honesto (documentado na própria tela, não
+escondido): deltas diários tipo "Carry médio ↑0,4%" do mockup — dependem
+de snapshot histórico dia-a-dia que ainda não existe (fora de escopo de
+propósito, pra não colidir com o gatilho das 20h58 sobre
+`api/teses/avaliar/route.ts`); a seção Alertas mostra só o que já é
+comparável hoje (gatilhos 24h, mudanças de status 24h, delta de nota
+média) com nota explícita de que o histórico começa a acumular hoje à
+noite. Novos tickers no Radar nas últimas 24h também ficou de fora (exigiria
+snapshot diário do Radar, que não existe).
+
+tsc + vitest (167/167, 7 testes novos) + build limpos, commit `7193a67`,
+verificado ao vivo: patrimônio real R$1.242.602,50, gráfico com dado real
+(queda de -32,5% refletida corretamente), Confluence médio 57 (cobertura
+9/9), tooltip do gráfico funcionando com "—" honesto onde falta benchmark.
 
 ## NOVO (03/08 ~20h35): CARTEIRA — BOTÕES EDITAR/EXCLUIR POR POSIÇÃO (pedido do Carlos) ✅ NO AR
 Carlos reportou: depois de registrar uma posição em `/carteira`, não
