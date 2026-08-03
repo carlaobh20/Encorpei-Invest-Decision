@@ -10,7 +10,7 @@ import {
 import { Zoom } from "@/components/Zoom";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
-import { escadaCarry, type CarryResultado, type DegrauCarry } from "@/lib/carry";
+import { escadaCarry, leituraGrowthVsCash, type CarryResultado, type DegrauCarry, type LeituraCarry } from "@/lib/carry";
 import { calcularCompounder } from "@/lib/compounder/v1";
 import { ehModeloFinanceiro, indicadorPermitido, modeloDe, ROTULO_MODELO } from "@/lib/setores";
 import { marketCapSelecionado } from "@/lib/marketcap";
@@ -37,6 +37,47 @@ type Fund = {
   divida_liquida: number | null;
   patrimonio_liquido: number | null;
 };
+
+/**
+ * LEGENDA DOS 5 NÍVEIS DO CARRY — texto fixo, mesma explicação pra qualquer
+ * ticker (não depende de dado). "Cenário" aqui é uma leitura, não um cálculo
+ * novo: Floor é o piso conservador (nunca falha silenciosamente); Growth é
+ * otimista (depende de execução futura); Cash é o teste de realidade contra
+ * caixa de fato; Allocation e Retorno Intrínseco ainda não existem com dado
+ * real — ver docs/carry-engine.md para as fórmulas completas.
+ */
+const LEGENDA_CARRY: { nivel: number; nome: string; cenario: string; explicacao: string }[] = [
+  {
+    nivel: 1,
+    nome: "Carry Floor (piso)",
+    cenario: "conservador",
+    explicacao: "Lucro dos últimos 12 meses ÷ valor de mercado — como se a empresa nunca mais crescesse. O carrego real dificilmente fica abaixo disso, a não ser que o lucro caia.",
+  },
+  {
+    nivel: 2,
+    nome: "Carry Growth (+ reinvestimento)",
+    cenario: "otimista",
+    explicacao: "Soma ao Floor a parte do lucro retida (não distribuída) reinvestida ao ROIC de hoje. Só se realiza se a empresa continuar conseguindo esse retorno ao reinvestir — depende de execução futura.",
+  },
+  {
+    nivel: 3,
+    nome: "Carry Cash (caixa em vez de lucro contábil)",
+    cenario: "realista",
+    explicacao: "Troca o lucro contábil pelo caixa que sobrou depois do capex. É o teste de qualidade do lucro: se ficar bem abaixo do Growth, o lucro contábil ainda não virou caixa na mesma proporção.",
+  },
+  {
+    nivel: 4,
+    nome: "Carry Allocation (o que chega ao acionista)",
+    cenario: "pendente",
+    explicacao: "Quanto do caixa chega a você de fato — dividendos e recompras, líquidos de diluição (novas ações emitidas). Precisa de meses de histórico de composição de capital para medir diluição real.",
+  },
+  {
+    nivel: 5,
+    nome: "Retorno Intrínseco (integra todos)",
+    cenario: "destino",
+    explicacao: "O número final: integra os 4 anteriores com risco e previsibilidade. Só nasce quando Growth, Cash e Allocation tiverem dado real — nunca uma média de notas disfarçada de retorno.",
+  },
+];
 
 type Empresa = { ticker: string; nome: string };
 
@@ -97,6 +138,7 @@ export default async function Comparar({
     nota: number | null; notaOficial: boolean; confianca: string | null;
     carry: CarryResultado | null;
     escada: DegrauCarry[];
+    leitura: LeituraCarry;
   }[] = [];
   let metricas: Metrica[] = [];
   let resumoExec: string[] = [];
@@ -314,6 +356,7 @@ export default async function Comparar({
         confianca: c.confianca,
         carry: c.carry,
         escada: c.escada,
+        leitura: leituraGrowthVsCash(c.escada),
       };
     });
 
@@ -534,17 +577,36 @@ export default async function Comparar({
                   {r.carry?.carryReal == null && r.carry && (
                     <p className="mt-2 text-[11px] leading-snug text-slate-500">{r.carry.explicacao}</p>
                   )}
+                  {r.leitura && (
+                    <p className={`mt-2 border-t border-white/5 pt-2 text-[11px] leading-snug ${
+                      r.leitura.direcao === "sustenta" ? "text-emerald-300/80" : "text-amber-300/80"
+                    }`}>
+                      {r.leitura.direcao === "sustenta" ? "✔" : "•"} {r.leitura.texto}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* ---------- legenda dos 5 níveis + cenário ---------- */}
+            <div className="mt-4 grid gap-x-4 gap-y-2 border-t border-white/5 pt-3 sm:grid-cols-2">
+              {LEGENDA_CARRY.map((n) => (
+                <div key={n.nivel} className="text-[10.5px] leading-snug">
+                  <p className="text-slate-300">
+                    <span className="font-semibold">{n.nivel}. {n.nome}</span>{" "}
+                    <span className="rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-slate-500">
+                      cenário {n.cenario}
+                    </span>
+                  </p>
+                  <p className="text-slate-500">{n.explicacao}</p>
                 </div>
               ))}
             </div>
             <p className="mt-3 text-[10.5px] leading-snug text-slate-500">
-              O número grande é o NÍVEL 1 (Carry Floor): lucro 12m ÷ valor de mercado — o pior
-              cenário, empresa que nunca mais cresce. Growth (reinvestimento a ROIC) e Cash (caixa
-              operacional líquido de capex, no lugar do lucro contábil) já calculam com dado oficial
-              da DFC/CVM. Allocation (o que chega ao acionista via dividendos/recompras, líquido de
-              diluição) e o Retorno Intrínseco aguardam a série histórica de composição de capital
-              acumular — não são dado que falta buscar, são meses de calendário de coleta diária —
-              fórmulas abertas em docs/carry-engine.md do repositório.
+              Growth (2) e Cash (3) já calculam com dado oficial da DFC/CVM. Allocation (4) e o
+              Retorno Intrínseco (5) aguardam a série histórica de composição de capital acumular —
+              não é dado que falta buscar, é calendário de coleta diária (começou 02/08/2026) — fórmulas
+              abertas em docs/carry-engine.md do repositório.
               <span className="text-slate-400"> Estimativas baseadas nos fundamentos atuais — NÃO é
               retorno garantido nem promessa de rentabilidade.</span>
             </p>

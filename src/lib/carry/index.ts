@@ -20,3 +20,4 @@ export function carryVigente(): CarryCalculator {
 
 export * from "./types";
 export { escadaCarry, type DegrauCarry } from "./escada";
+export { leituraGrowthVsCash, type LeituraCarry } from "./leitura";
