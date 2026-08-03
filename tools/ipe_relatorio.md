@@ -1,16 +1,13 @@
 # Management Intelligence v0 — coleta IPE (CVM)
 Gerado em 2026-08-03
 
+- tentativa 1/3 falhou (ConnectionError); aguardando 30s
+- tentativa 2/3 falhou (ConnectionError); aguardando 30s
+- tentativa 3/3 falhou (ConnectionError); aguardando 30s
+- tentativa 1/3 falhou (ConnectionError); aguardando 30s
+- tentativa 2/3 falhou (ConnectionError); aguardando 30s
+- tentativa 3/3 falhou (ConnectionError); aguardando 30s
 
-## ERRO NA EXECUÇÃO
+**NADA extraído — ver colunas acima e ajustar.**
 
-```
-Traceback (most recent call last):
-  File "/home/runner/work/Encorpei-Invest-Decision/Encorpei-Invest-Decision/tools/coleta_ipe.py", line 167, in <module>
-    main()
-  File "/home/runner/work/Encorpei-Invest-Decision/Encorpei-Invest-Decision/tools/coleta_ipe.py", line 79, in main
-    rel.append(f"\n## {ano}: arquivos no zip: {nomes}")
-    ^^^
-UnboundLocalError: cannot access local variable 'rel' where it is not associated with a value
-
-```
+## Resumo: 0 comunicações · 0 empresas
