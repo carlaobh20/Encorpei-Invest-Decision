@@ -1,0 +1,37 @@
+name: Coleta IPE (comunicações oficiais CVM)
+
+# Roda todo dia útil de manhã: baixa o dataset IPE da CVM (fatos
+# relevantes, comunicados, apresentações), filtra o universo e commita a
+# migração 010 atualizada + relatório. Disparo manual: tocar
+# tools/.trigger-ipe e dar push, ou workflow_dispatch.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 10 * * 1-5" # 07h BRT, dias úteis
+  push:
+    paths:
+      - "tools/.trigger-ipe"
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas requests
+      - run: python tools/coleta_ipe.py
+        working-directory: .
+        env:
+          PYTHONPATH: tools
+      - run: |
+          git config user.name "encorpei-bot"
+          git config user.email "actions@github.com"
+          git add tools/ipe_relatorio.md
+          git add supabase/migrations/010_seed_comunicados.sql 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "IPE: comunicações oficiais atualizadas (automático)" && git push)
