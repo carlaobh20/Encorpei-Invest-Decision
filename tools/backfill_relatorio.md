@@ -71,3 +71,4 @@ Períodos extraídos: **241** · Empresas com dados: **40/40**
     ITR 2026: acumulado 241 períodos
     acoes_totais: seed gerado com 40 tickers
     JSON de sincronização: 241 períodos + 40 ações
+    DFC: 243 períodos de fluxo de caixa extraídos
