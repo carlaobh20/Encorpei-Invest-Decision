@@ -363,11 +363,11 @@ export default async function Carteira() {
       </div>
 
       <p className="text-[10.5px] leading-snug text-slate-600">
-        O que ainda NÃO aparece aqui — e por quê: Sharpe, alpha e comparação com
-        CDI/Ibovespa precisam de uma SÉRIE de patrimônio (que começa a acumular
-        agora que as posições existem) e dos benchmarks coletados de fonte
-        oficial. Mostrar esses números sem essa base seria inventar precisão.
-        Preços datam do último pregão coletado
+        Rentabilidade, Alpha vs. CDI/IPCA/Ibovespa, drawdown e Sharpe agora aparecem em{" "}
+        <Link href="/" className="text-sky-400 hover:underline">Meu Patrimônio</Link> — mas só para posições com
+        <span className="text-slate-400"> data de compra</span> preenchida acima (sem data, não dá pra posicionar a
+        posição no tempo e comparar com os benchmarks; nunca estimamos essa data por você). Preços datam do último
+        pregão coletado
         {dataPrecoPorTicker.size > 0 && (
           <> ({[...new Set(dataPrecoPorTicker.values())].sort().reverse()[0]})</>
         )}
