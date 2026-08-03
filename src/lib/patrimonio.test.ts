@@ -190,4 +190,56 @@ describe("calcularSeriePatrimonio", () => {
     // Sortino só penaliza o downside — deve ser maior que o Sharpe (que penaliza toda a variância)
     expect(resultado.sortino!).toBeGreaterThan(resultado.sharpe!);
   });
+
+  it("dataCompra anterior ao início do histórico de preço: benchmark simulado ainda funciona (bug real de 03/08/2026 — Carlos reportou CDI/Ibovespa sumidos do gráfico)", () => {
+    // Reproduz o caso real: posição comprada em 2025-12-10, mas o backfill de
+    // preços das ações só começa em 2026-05-05 (datasPregao = janela do
+    // gráfico). Antes da correção, o índice do benchmark só existia nas
+    // datas de datasPregao — buscar pelo índice EXATAMENTE em "2025-12-10"
+    // nunca batia, e cdiSimulado/ipcaSimulado/ibovespaSimulado ficavam null
+    // em TODO ponto, mesmo com CDI/IPCA/Ibovespa cobrindo o período inteiro.
+    const datasPregao = ["2026-05-05", "2026-05-06", "2026-05-07"];
+    const resultado = calcularSeriePatrimonio({
+      posicoes: [
+        { ticker: "VALE3", quantidade: 100, precoMedio: 60, dataCompra: "2025-12-10" },
+      ],
+      precosPorTicker: new Map([
+        ["VALE3", datasPregao.map((d, i) => ({ data: d, fechamento: 60 * (1 + i * 0.01) }))],
+      ]),
+      // CDI/IPCA/Ibovespa cobrem BEM antes da dataCompra — a fonte de dado
+      // não é o problema, o problema era a chave de busca do índice.
+      cdi: [
+        { data: "2025-12-01", valor: 0.05 },
+        { data: "2026-05-05", valor: 0.05 },
+        { data: "2026-05-06", valor: 0.05 },
+        { data: "2026-05-07", valor: 0.05 },
+      ],
+      // IPCA é mensal (taxa_evento): precisa de uma observação DENTRO da
+      // janela pra compor — uma publicação só em 2025-12-01 (fora da janela
+      // de 3 pregões em maio) deixaria o IPCA honestamente indisponível
+      // aqui, o que não é o que este teste quer verificar (esse é um caso
+      // à parte, não o bug da dataCompra).
+      ipca: [
+        { data: "2025-12-01", valor: 0.4 },
+        { data: "2026-05-05", valor: 0.35 },
+      ],
+      ibovespa: [
+        { data: "2025-12-01", valor: 100000 },
+        { data: "2026-05-05", valor: 130000 },
+        { data: "2026-05-06", valor: 131000 },
+        { data: "2026-05-07", valor: 132000 },
+      ],
+      datasPregao,
+    });
+    const ultimo = resultado.pontos[resultado.pontos.length - 1];
+    expect(ultimo.cdiSimulado).not.toBeNull();
+    expect(ultimo.ipcaSimulado).not.toBeNull();
+    expect(ultimo.ibovespaSimulado).not.toBeNull();
+    expect(resultado.alpha.vsCdi).not.toBeNull();
+    expect(resultado.alpha.vsIbovespa).not.toBeNull();
+    // a simulação ancora no primeiro pregão da janela (2026-05-05), não na
+    // dataCompra registrada — Ibovespa foi de 130000 a 132000 nesse trecho
+    // (+1,538%), então R$6.000 investidos viram ~R$6.092,31
+    expect(ultimo.ibovespaSimulado!).toBeCloseTo(6000 * (132000 / 130000), 2);
+  });
 });

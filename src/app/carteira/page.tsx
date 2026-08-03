@@ -679,8 +679,12 @@ export default async function Carteira() {
         Método: valor investido, valor atual e resultado vêm direto das posições registradas × preço oficial mais
         recente. Performance (Alpha vs. CDI/IPCA/Ibovespa, drawdown, Sharpe, Sortino, Volatilidade) simula, para cada
         posição com data de compra registrada, &quot;se esse valor investido tivesse ido para o benchmark&quot; —
-        curva comparável em R$ com a carteira real (mesmos aportes, mesmas datas); Sharpe/Sortino/Volatilidade só
-        aparecem quando a série acumulada tem histórico suficiente (corte honesto — nunca estimados). Nota vem das
+        curva comparável em R$ com a carteira real (mesmos aportes, mesmas datas). Quando o histórico de preço da
+        ação é mais curto que a data de compra registrada, a comparação começa no primeiro pregão coberto pelos
+        dois lados, não na data de compra em si — nunca estimamos preço ou benchmark antes do que existe.
+        Sharpe/Sortino/Volatilidade só aparecem quando a série acumulada tem histórico suficiente (corte honesto —
+        nunca estimados). Ibovespa em particular tem histórico curto hoje (coleta diária via brapi, sem fonte
+        gratuita de backfill) — a linha do gráfico só aparece quando há 2+ pregões coletados. Nota vem das
         réguas de fundamentos versionadas; Confluence combina Fundamentos+Carry+Compounder+Technical (ver{" "}
         <Link href="/algoritmo" className="text-sky-400 hover:underline">Algoritmo</Link>). Fontes: fundamentos via
         CVM, preços via brapi, CDI/IPCA/Selic via BCB/SGS. Preços datam do último pregão coletado

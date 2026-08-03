@@ -22,6 +22,15 @@
  * - CDI e IPCA vêm do BCB/SGS como TAXA (% ao dia e % no mês); Ibovespa
  *   vem como NÍVEL (pontos). `indiceAcumulado` trata os três com o mesmo
  *   contrato, sem confundir taxa com nível.
+ * - A simulação do benchmark ANCORA no primeiro pregão coberto pelo
+ *   histórico de preço das ações (`datasNaJanela[0]`), não literalmente na
+ *   `data_compra`, quando essa data é anterior ao início do backfill de
+ *   preços. Corrigido em 03/08/2026 (Carlos reportou CDI/Ibovespa sumidos
+ *   do gráfico): buscar o índice do benchmark exatamente EM `data_compra`
+ *   falhava sempre que o backfill de preço começava depois — a curva real
+ *   da carteira também só é comparável a partir desse mesmo primeiro
+ *   pregão comum, então ancorar os dois ali é o corte honesto, não uma
+ *   aproximação.
  */
 
 export type ObservacaoBenchmark = { data: string; valor: number };
@@ -159,6 +168,18 @@ export function calcularSeriePatrimonio(input: {
     return ultimo;
   }
 
+  // Data de entrada usada pra buscar o índice do benchmark. Normalmente é a
+  // própria dataCompra — mas se o histórico de preço das ações (que define
+  // `datasNaJanela`) começar DEPOIS da dataCompra registrada (backfill mais
+  // raso que o registro do Carlos), a dataCompra nunca aparece como chave no
+  // índice do benchmark (que só existe nas datas de `datasNaJanela`) e a
+  // simulação inteira ficava presa em null pra sempre — mesmo com CDI/IPCA
+  // cobrindo o período de sobra. Corte honesto aqui NÃO é fingir dado antes
+  // do que existe: é ancorar a simulação no primeiro pregão em que a posição
+  // já é comparável de verdade (mesmo dia em que valorCarteira passa a
+  // contar preço real dela) — nunca antes disso pra nenhuma das duas pernas.
+  const primeiraDataJanela = datasNaJanela[0];
+
   const pontos: PontoPatrimonio[] = [];
   for (const data of datasNaJanela) {
     let valorCarteira = 0;
@@ -175,17 +196,19 @@ export function calcularSeriePatrimonio(input: {
       const valorInvestido = p.quantidade * p.precoMedio;
       valorInvestidoAcumulado += valorInvestido;
 
-      const iCdiEntrada = idxCdi.get(p.dataCompra) ?? null;
+      const dataEntradaBenchmark = p.dataCompra > primeiraDataJanela ? p.dataCompra : primeiraDataJanela;
+
+      const iCdiEntrada = idxCdi.get(dataEntradaBenchmark) ?? null;
       const iCdiHoje = idxCdi.get(data) ?? null;
       if (iCdiEntrada && iCdiHoje) cdiSimulado += valorInvestido * (iCdiHoje / iCdiEntrada);
       else temTodosBenchmarks = false;
 
-      const iIpcaEntrada = idxIpca.get(p.dataCompra) ?? null;
+      const iIpcaEntrada = idxIpca.get(dataEntradaBenchmark) ?? null;
       const iIpcaHoje = idxIpca.get(data) ?? null;
       if (iIpcaEntrada && iIpcaHoje) ipcaSimulado += valorInvestido * (iIpcaHoje / iIpcaEntrada);
       else temTodosBenchmarks = false;
 
-      const iIbovEntrada = idxIbov.get(p.dataCompra) ?? null;
+      const iIbovEntrada = idxIbov.get(dataEntradaBenchmark) ?? null;
       const iIbovHoje = idxIbov.get(data) ?? null;
       if (iIbovEntrada && iIbovHoje) ibovSimulado += valorInvestido * (iIbovHoje / iIbovEntrada);
       else temTodosBenchmarks = false;
