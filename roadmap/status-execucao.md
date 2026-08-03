@@ -1,6 +1,66 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~21h (Home "Meu Patrimônio" redesenhada — visual dark glass premium, hierarquia fixa 01→07 pedida pelo Carlos, todo número real — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 03/08/2026 ~21h30 (Meu Dash reconstruído como terminal financeiro denso, 4 linhas, 1ª dobra sem scroll — no ar · Carteira + Saúde da Carteira mescladas em "Minha Carteira" — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+
+## NOVO (03/08 ~21h15): MINHA CARTEIRA — MESCLAGEM DE /CARTEIRA + /SAUDE-CARTEIRA ✅ NO AR
+Carlos mandou um mockup (dessa vez com números REAIS da carteira dele, não
+inventados) pedindo pra unir Carteira e Saúde da Carteira numa página só,
+renomear a home pra "Meu Dash" e a nova página pra "Minha Carteira". Uma
+peça do mockup ("Exposição por fator": Value/Growth/Dividendos/Cíclicas/
+Defensivas/Caixa) não existe em nenhum motor do sistema — foi
+propositalmente OMITIDA (nem placeholder), registrado no cabeçalho de
+`carteira/page.tsx`. Rodapé do mockup dizia método "TWR" e fonte
+"B3+Broadcast" — trocado pelo método real (simulação de aporte) e fontes
+reais (CVM/brapi/BCB).
+
+Implementado: `/carteira` (mesma URL) virou a página mesclada — 6 stat
+cards (Investido/Valor atual/Resultado/Nota/Confluence da carteira com
+rótulo de convicção/Carry médio), painel Saúde da Carteira completo
+(Concentração, Carry, Volatilidade anualizada, ROIC, Valuation,
+Sensibilidade à Selic, diversificação por modelo + donut novo hand-rolled),
+tabela de posições ampliada (+ colunas Nota e Confluence por posição,
+editar/excluir via `AcoesPosicao` já existente), botões "+ Adicionar ativo"
+(rola até o formulário já existente), "+ Adicionar ação" (link pro Diário)
+e "↻ Rebalancear" (linka pra `/em-breve?m=rebalancear` — motor não existe,
+registrado o que falta pra existir de verdade: decisão de "peso alvo",
+não é cálculo automático). `/saude-carteira` virou redirect pra `/carteira`
+(link antigo nunca quebra). Extraída `classificarConviccao()` em
+`confluencia.ts` — régua única de convicção reusada por empresa e no
+agregado de carteira. tsc + vitest (173/173) + build limpos, commit
+`729ddc3`, verificado ao vivo com dado real (R$1.242.602,50, Confluence 57
+"moderada", 9 posições).
+
+## NOVO (03/08 ~21h30): MEU DASH — RECONSTRUÇÃO COMPLETA (TERMINAL FINANCEIRO, NÃO ERP) ✅ NO AR
+Carlos pediu explicitamente pra não fazer ajuste pontual — reconstrução de
+arquitetura da informação, inspirada em Bloomberg/Koyfin/Aladdin/FactSet.
+Regra dele: menos altura, mais largura, mais dados, menos espaço vazio; 1ª
+dobra sem scroll mostrando o essencial. Único ponto sinalizado antes de
+construir: o card "Caixa" que ele pediu não tem dado real (sistema não
+rastreia dinheiro não investido) — fica "—" com o motivo, nunca inventado.
+
+Nova arquitetura, 4 linhas (substituiu a hierarquia numerada 01→07 de
+horas atrás — vida curta, mas foi a decisão certa NAQUELE momento com a
+informação que havia; corrigir rápido quando o pedido muda é o esperado,
+não um erro a esconder): Linha 1 — 10 stat cards de ≤90px numa linha só
+(Patrimônio/Investido/Resultado/Alpha/Carry/Confluence/Sharpe/Drawdown/
+Caixa/Posições); Linha 2 — gráfico Performance (70%, ~280-320px, viewBox
+do `GraficoPatrimonio` ajustado de H=300 pra H=230 pra caber) + Resumo
+IA/Alertas/Radar/Oportunidades (30%); Linha 3 — Minha Carteira resumida
+(65%) + Saúde da Carteira resumida (35%), com link pra página completa;
+Linha 4 — Timeline/Decision Feed+Diário/Cenário Macro/Heatmap de retorno
+por posição (novo, `corHeatmapRetorno()` em `src/lib/heatmap.ts`, cor real
+por resultadoPct, testado). Universo por nota completo fica abaixo da 1ª
+dobra, com rolagem. Nenhuma funcionalidade removida — só redistribuída;
+o único descarte deliberado foi o placeholder vazio "Calendário & IA
+explicativa" (sem dado nenhum atrás, segue acessível pelo menu).
+
+Verificação: o subagente que construiu não tinha Chrome disponível pra
+testar visualmente e sinalizou isso explicitamente em vez de afirmar que
+funcionava sem checar. Testei eu mesmo ao vivo via medição real no DOM
+(não só visual): os 10 cards da Linha 1 renderizam com 158px de largura
+cada, altura máxima 84px (dentro do limite de 90px pedido), sem quebra de
+linha, sem overflow horizontal. tsc + vitest (183/183, +10 novos) + build
+limpos, commit `88cee7d`.
 
 ## NOVO (03/08 ~21h): HOME "MEU PATRIMÔNIO" REDESENHADA — VISUAL DARK GLASS PREMIUM ✅ NO AR
 Carlos mandou uma especificação completa de redesign (inspiração Bloomberg/
