@@ -269,7 +269,7 @@ def extrair_composicao(z: zipfile.ZipFile, acoes: dict):
             acoes[r["TICKER"]] = {"qtd": float(r["QT"]), "ref": str(r["DT_REFER"])}
 
 
-def gerar_seed_acoes(acoes: dict, resultados: dict, rel_notas: list):
+def gerar_seed_acoes(acoes: dict, resultados: dict, rel_notas: list) -> list[dict]:
     """Gera 008_seed_acoes.sql normalizando a escala.
 
     Armadilha da CVM: cada companhia escolhe informar o nº de ações em
@@ -279,8 +279,9 @@ def gerar_seed_acoes(acoes: dict, resultados: dict, rel_notas: list):
     papel — se |lucro anual| ÷ qtd > R$ 100, o número está em milhares.
     """
     if not acoes:
-        return
+        return []
     linhas = []
+    dados_json: list[dict] = []
     for ticker in sorted(acoes):
         qtd, ref = acoes[ticker]["qtd"], acoes[ticker]["ref"]
         lucros = sorted(
@@ -298,6 +299,7 @@ def gerar_seed_acoes(acoes: dict, resultados: dict, rel_notas: list):
                 f"- {ticker}: sem lucro anual para validar a escala do nº de "
                 f"ações — valor bruto mantido ({qtd:.0f}), conferir")
         linhas.append(f"  ('{ticker}', {qtd:.0f}, '{ref}')")
+        dados_json.append({"ticker": ticker, "qtd_acoes": round(qtd), "data_referencia": ref})
 
     corpo = ",\n".join(linhas)
     sql = f"""-- ENCORPEI INVEST — Migração 008: nº total de ações (fonte OFICIAL:
@@ -328,6 +330,7 @@ on conflict (ticker) do update
     with open("supabase/migrations/008_seed_acoes.sql", "w") as f:
         f.write(sql)
     log(f"acoes_totais: seed gerado com {len(linhas)} tickers")
+    return dados_json
 
 
 def main():
@@ -397,7 +400,29 @@ def main():
 
     # ---------- nº de ações (valuation) ----------
     rel_notas_acoes: list = []
-    gerar_seed_acoes(acoes, resultados, rel_notas_acoes)
+    acoes_json = gerar_seed_acoes(acoes, resultados, rel_notas_acoes) or []
+
+    # ---------- JSON p/ sincronização AUTOMÁTICA diária (rota do app) ----------
+    import json as _json
+    import os as _os
+    _os.makedirs("tools/dados", exist_ok=True)
+    fundamentos_json = [
+        {
+            "ticker": t, "competencia": fim, "fonte": fonte,
+            "receita_liquida": m["receita"], "lucro_liquido": m["lucro"],
+            "margem_bruta": m["mb"], "margem_liquida": m["ml"], "roic": m["roic"],
+            "divida_liquida": m["div_liq"], "caixa": m["caixa"],
+            "patrimonio_liquido": m["pl"],
+        }
+        for (t, fim, fonte), m in sorted(resultados.items())
+    ]
+    with open("tools/dados/fundamentos.json", "w") as f:
+        _json.dump({
+            "gerado_em": str(date.today()),
+            "fundamentos": fundamentos_json,
+            "acoes_totais": acoes_json,
+        }, f, ensure_ascii=False)
+    log(f"JSON de sincronização: {len(fundamentos_json)} períodos + {len(acoes_json)} ações")
 
     # ---------- relatório ----------
     por_ticker = {}

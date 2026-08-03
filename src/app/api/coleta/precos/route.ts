@@ -61,6 +61,50 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ erro: errEmpresas.message }, { status: 500 });
   }
 
+  // ---------- SINCRONIZAÇÃO DIÁRIA DE FUNDAMENTOS (CVM via Actions) ----------
+  // O robô do GitHub baixa a CVM todo dia útil de manhã e commita um JSON;
+  // aqui ele entra no banco sozinho — resultado novo (ex.: 2T26) aparece no
+  // app no MESMO dia, sem passo manual. Guardado: falha aqui não derruba a
+  // coleta de preços.
+  let fundamentos_sync = "pulado";
+  try {
+    const RAW =
+      "https://raw.githubusercontent.com/carlaobh20/Encorpei-Invest-Decision/main/tools/dados/fundamentos.json";
+    const rSync = await fetch(RAW, { cache: "no-store" });
+    if (rSync.ok) {
+      const j = (await rSync.json()) as {
+        gerado_em: string;
+        fundamentos: Record<string, unknown>[];
+        acoes_totais: { ticker: string; qtd_acoes: number; data_referencia: string }[];
+      };
+      let nFund = 0;
+      const lote = 200;
+      for (let i = 0; i < (j.fundamentos ?? []).length; i += lote) {
+        const { error } = await supabase
+          .from("fundamentos")
+          .upsert(j.fundamentos.slice(i, i + lote), {
+            onConflict: "ticker,competencia,fonte",
+          });
+        if (!error) nFund += Math.min(lote, j.fundamentos.length - i);
+      }
+      let nAcoes = 0;
+      if ((j.acoes_totais ?? []).length > 0) {
+        const { error } = await supabase
+          .from("acoes_totais")
+          .upsert(
+            j.acoes_totais.map((a) => ({ ...a, fonte: "cvm_composicao_capital" })),
+            { onConflict: "ticker" }
+          );
+        if (!error) nAcoes = j.acoes_totais.length;
+      }
+      fundamentos_sync = `${nFund} períodos + ${nAcoes} ações (gerado ${j.gerado_em})`;
+    } else {
+      fundamentos_sync = `JSON indisponível (HTTP ${rSync.status})`;
+    }
+  } catch (e) {
+    fundamentos_sync = `falhou: ${String(e).slice(0, 120)}`;
+  }
+
   // quantos pregões já temos por ticker (últimos ~130 dias)
   const desde130 = new Date(Date.now() - 130 * 86_400_000).toISOString().slice(0, 10);
   const { data: existentes } = await supabase
@@ -154,6 +198,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     coletados: ok.length,
     historico_gravado,
+    fundamentos_sync,
     falhas,
     executado_em: new Date().toISOString(),
   });

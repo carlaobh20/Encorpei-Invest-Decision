@@ -7,7 +7,10 @@ on:
       - "tools/.trigger-backfill"
   schedule:
     # dia 15 de cada mês, 09:00 UTC — pega ITRs novos da temporada de balanços
-    - cron: "0 9 15 * *"
+    # DIÁRIO em dias úteis (06h BRT): época de resultados não espera dia 15.
+    # O app sincroniza o JSON gerado aqui na coleta das 20h — dado novo da
+    # CVM entra no banco no MESMO dia, sem passo manual.
+    - cron: "0 9 * * 1-5"
 
 permissions:
   contents: write
@@ -34,6 +37,7 @@ jobs:
           git config user.email "actions@github.com"
           git add supabase/migrations/002_seed_fundamentos.sql tools/backfill_relatorio.md
           git add supabase/migrations/008_seed_acoes.sql 2>/dev/null || true
+          git add -f tools/dados/fundamentos.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Nada mudou."
           else
