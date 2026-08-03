@@ -1,0 +1,35 @@
+name: Coleta Focus (expectativas BCB)
+
+# Toda segunda-feira (o Focus sai segunda de manhã) + disparo manual.
+# stdout sempre commitado — diagnóstico auditável, padrão da casa.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 12 * * 1" # segunda 09h BRT
+  push:
+    paths:
+      - "tools/.trigger-focus"
+
+permissions:
+  contents: write
+
+jobs:
+  coletar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Coletar e commitar (sempre)
+        run: |
+          pip install requests
+          python tools/coleta_focus.py > tools/focus_stdout.txt 2>&1 || echo "script falhou (ver stdout)" >> tools/focus_stdout.txt
+          git config user.name "encorpei-bot"
+          git config user.email "actions@github.com"
+          git add -f tools/focus_stdout.txt
+          git add tools/focus_relatorio.md 2>/dev/null || true
+          git add -f tools/dados/macro_focus.json 2>/dev/null || true
+          git add supabase/migrations/012_macro_focus.sql 2>/dev/null || true
+          git diff --cached --quiet || (git commit -m "Focus: expectativas BCB atualizadas (automático)" && git push)

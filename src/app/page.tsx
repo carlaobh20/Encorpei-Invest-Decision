@@ -128,6 +128,21 @@ export default async function DecisionCenter() {
     calcularRadar(supabase),
   ]);
 
+  // Cenário macro (Focus/BCB) — guardado: sem a migração 012, vem null
+  const { data: focusRaw } = await supabase
+    .from("macro_focus")
+    .select("indicador, data_pesquisa, ano_referencia, mediana")
+    .eq("ano_referencia", new Date().getFullYear())
+    .order("data_pesquisa", { ascending: false })
+    .limit(40);
+  const focus = (focusRaw as { indicador: string; data_pesquisa: string; ano_referencia: number; mediana: number }[] | null) ?? [];
+  const focusPorInd = new Map<string, { atual: number; anterior: number | null; data: string }>();
+  for (const f of focus) {
+    const j = focusPorInd.get(f.indicador);
+    if (!j) focusPorInd.set(f.indicador, { atual: Number(f.mediana), anterior: null, data: f.data_pesquisa });
+    else if (j.anterior === null && f.data_pesquisa < j.data) j.anterior = Number(f.mediana);
+  }
+
   // ---------- nota oficial mais recente por ticker ----------
   const vistos = new Set<string>();
   const ranking: ScoreRow[] = [];
@@ -251,6 +266,39 @@ export default async function DecisionCenter() {
           </div>
         </div>
       </section>
+
+      {/* ================= cenário macro (Focus) — acende com a 012 ================= */}
+      {focusPorInd.size > 0 && (
+        <section className="rounded-2xl border border-white/5 bg-white/[0.03] px-5 py-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+              Cenário macro — Relatório Focus (BCB), expectativa p/ {new Date().getFullYear()}
+            </h2>
+            <p className="text-[10px] text-slate-600">macro informa; quem decide são as suas teses</p>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-6">
+            {["IPCA", "Selic", "PIB Total", "Câmbio"].map((ind) => {
+              const f = focusPorInd.get(ind);
+              if (!f) return null;
+              const delta = f.anterior !== null ? f.atual - f.anterior : null;
+              return (
+                <div key={ind}>
+                  <p className="text-base font-bold text-slate-100">
+                    {f.atual.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                    {ind === "Câmbio" ? "" : "%"}
+                    {delta !== null && Math.abs(delta) >= 0.01 && (
+                      <span className={`ml-1 text-[11px] font-semibold ${delta > 0 ? "text-amber-300" : "text-sky-300"}`}>
+                        {delta > 0 ? "▲" : "▼"}{Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{ind}</p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ================= linha 1: mudanças + radar ================= */}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">

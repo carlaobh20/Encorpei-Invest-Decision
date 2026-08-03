@@ -30,6 +30,11 @@ const MODULOS: Record<string, { nome: string; oque: string; destrava: string }> 
     oque: "Resumos e explicações em linguagem natural gerados por IA sobre os fatos que as regras produziram. A IA NUNCA decide nem pontua — só traduz.",
     destrava: "Configurar a chave da API do Claude na Vercel. As explicações atuais do sistema são geradas por regras (templates) — a IA as tornará mais ricas, não mais verdadeiras.",
   },
+  macro: {
+    nome: "Thesis Evolution (Macro + Cenários)",
+    oque: "Leitura semanal do cenário macro OFICIAL (Relatório Focus/BCB: IPCA, Selic, PIB, câmbio) com variação vs semanas anteriores, perfis de sensibilidade por empresa e, no futuro, cenários recalculando o Carry. Macro INFORMA — nunca altera uma tese sozinho.",
+    destrava: "O coletor semanal do Focus já existe (segundas, 9h). O card acende com a migração 012. Perfis de sensibilidade são rascunhos qualitativos que o Carlos ratifica (como as teses). Macro Score 0-100, cenários no Carry e o Market Digital Twin ficam gateados: exigem elasticidades medidas por empresa — sem isso seria número inventado, e não fazemos isso.",
+  },
   gestao: {
     nome: "Management Intelligence",
     oque: "Leitura da comunicação OFICIAL da administração (fatos relevantes, comunicados, apresentações, calls): o que prometeram, o que executaram, mudança de tom — sempre com o trecho original rastreável. O acervo de documentos já está sendo coletado diariamente do dataset IPE da CVM.",
