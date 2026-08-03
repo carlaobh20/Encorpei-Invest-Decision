@@ -11,18 +11,19 @@ import Link from "next/link";
  */
 
 /**
- * Hierarquia PIC 01 (03/08/2026): Patrimônio → Carteira → Confluence →
- * Teses → Oportunidades → Empresas → Indicadores. Nenhuma rota foi
- * removida — só reorganizada: "Patrimônio" passa a ser o grupo de
- * entrada, e Carteira/Saúde da Carteira migram pra dentro dele.
+ * Hierarquia PIC 01 (03/08/2026, renomeada em seguida): Patrimônio →
+ * Carteira → Confluence → Teses → Oportunidades → Empresas → Indicadores.
+ * Nenhuma rota foi removida — só reorganizada e renomeada: "Meu Dash" é o
+ * antigo "Meu Patrimônio" (mesma rota "/"); "Minha Carteira" mescla o que
+ * antes eram "Carteira" e "Saúde da Carteira" (que agora redireciona pra
+ * "/carteira", sem entrada própria no menu).
  */
 const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
   {
     rotulo: "Patrimônio",
     links: [
-      ["/", "Meu Patrimônio"],
-      ["/carteira", "Carteira"],
-      ["/saude-carteira", "Saúde da Carteira"],
+      ["/", "Meu Dash"],
+      ["/carteira", "Minha Carteira"],
     ],
   },
   {

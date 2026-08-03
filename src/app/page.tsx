@@ -14,10 +14,14 @@ import { gerarDecisionFeed, ROTULO_SUGESTAO, type DecisionFeedEntrada, type Suge
 export const dynamic = "force-dynamic";
 
 /**
- * MEU PATRIMÔNIO (redesign "glass" premium, 03/08/2026) — hierarquia fixa
- * pedida pelo Carlos, nunca ao contrário:
+ * MEU DASH (redesign "glass" premium, 03/08/2026; renomeado de "Meu
+ * Patrimônio" para "Meu Dash" no mesmo dia) — hierarquia fixa pedida pelo
+ * Carlos, nunca ao contrário:
  *   01 Meu Patrimônio · 02 Performance · 03 Minha Carteira ·
  *   04 Oportunidades · 05 Alertas · 06 IA · 07 Empresas
+ * (o TÍTULO da página/aba é "Meu Dash"; a seção 01 continua se chamando
+ * "Meu Patrimônio" internamente — é o número que ela mostra, não o rótulo
+ * do produto).
  *
  * Regra inegociável: todo número renderizado vem de uma variável calculada
  * a partir de dado real (banco/regras puras) — nunca um valor decorativo.
@@ -156,7 +160,7 @@ function Stat({
 export default async function DecisionCenter() {
   if (!isSupabaseConfigured || !supabase) {
     return (
-      <Shell ativo="/" titulo="Meu Patrimônio">
+      <Shell ativo="/" titulo="Meu Dash">
         <p className="text-slate-400">Supabase não configurado.</p>
       </Shell>
     );
@@ -350,7 +354,7 @@ export default async function DecisionCenter() {
     v === null ? "text-slate-600" : v >= 0 ? "text-emerald-400" : "text-red-400";
 
   return (
-    <Shell ativo="/" titulo="Meu Patrimônio" subtitulo={hoje} rolagem>
+    <Shell ativo="/" titulo="Meu Dash" subtitulo={hoje} rolagem>
       {/* ================= ambiente: cenário macro (Focus) — sempre discreto, nunca compete com a hierarquia ================= */}
       {focusPorInd.size > 0 && (
         <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-full border border-white/[0.05] bg-white/[0.015] px-5 py-2 text-[11px]">
@@ -435,7 +439,7 @@ export default async function DecisionCenter() {
         numero="02"
         titulo="Performance"
         subtitulo="Carteira real vs. CDI, Ibovespa e IPCA — mesma simulação de aporte para os quatro, comparável em R$."
-        acao={carteira ? { href: "/saude-carteira", rotulo: "saúde da carteira" } : undefined}
+        acao={carteira ? { href: "/carteira", rotulo: "saúde da carteira" } : undefined}
       >
         {patrimonio && patrimonio.resultado.pontos.length >= 2 ? (
           <>

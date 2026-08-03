@@ -39,6 +39,21 @@ export const ROTULO_CONVICCAO: Record<Conviccao, string> = {
   indefinida: "Indefinida (dado insuficiente)",
 };
 
+/**
+ * Régua única de convicção — usada tanto por empresa (calcularConfluencia,
+ * onde `coberturaFrac` é o peso disponível entre os 4 componentes) quanto
+ * no agregado de carteira (confluenciaMediaPonderada em portfolio-health.ts,
+ * onde `coberturaFrac` é a fração de posições com Confluence Score
+ * calculável). Extraída em 03/08/2026 para não duplicar a lógica em dois
+ * lugares — mesma régua, dois usos.
+ */
+export function classificarConviccao(score: number | null, coberturaFrac: number): Conviccao {
+  if (score === null || coberturaFrac < 0.4) return "indefinida";
+  if (score >= 75 && coberturaFrac >= 0.7) return "alta";
+  if (score >= 50) return "moderada";
+  return "baixa";
+}
+
 export type ConfluenciaResultado = {
   score: number | null;
   conviccao: Conviccao;
@@ -121,16 +136,7 @@ export function calcularConfluencia(entrada: {
       ? null
       : Math.round(disponiveis.reduce((a, c) => a + c.valor! * c.peso, 0) / pesoDisponivel);
 
-  let conviccao: Conviccao;
-  if (score === null || pesoDisponivel < 0.4) {
-    conviccao = "indefinida";
-  } else if (score >= 75 && pesoDisponivel >= 0.7) {
-    conviccao = "alta";
-  } else if (score >= 50) {
-    conviccao = "moderada";
-  } else {
-    conviccao = "baixa";
-  }
+  const conviccao = classificarConviccao(score, pesoDisponivel);
 
   return {
     score,

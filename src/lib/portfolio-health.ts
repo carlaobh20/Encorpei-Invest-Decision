@@ -10,6 +10,7 @@
  */
 
 import type { CategoriaSensibilidade } from "./compounder/sensibilidade-juros";
+import { classificarConviccao, type Conviccao } from "./confluencia";
 
 export type LinhaSaude = {
   ticker: string;
@@ -70,6 +71,8 @@ export type ConfluenciaMediaPonderada = {
   /** quantas posições tinham Confluence Score calculável */
   cobertura: number;
   total: number;
+  /** mesma régua de classificarConviccao (confluencia.ts), aplicada ao agregado da carteira */
+  conviccao: Conviccao;
 };
 
 /**
@@ -77,13 +80,22 @@ export type ConfluenciaMediaPonderada = {
  * Score (0-100) já calculado por empresa em confluencia.ts (via
  * calcularConfluencias). Mesmo padrão de `mediaPonderada` usado acima para
  * Carry/ROIC/valuation/sensibilidade: só pondera quem tem score, cobertura
- * honesta reportada em vez de fingir dado que falta.
+ * honesta reportada em vez de fingir dado que falta. `conviccao` reusa a
+ * MESMA régua aplicada por empresa (classificarConviccao) — aqui
+ * `coberturaFrac` é a fração de POSIÇÕES (não de peso de componentes) com
+ * score calculável.
  */
 export function confluenciaMediaPonderada(
   linhas: { peso: number; score: number | null }[]
 ): ConfluenciaMediaPonderada {
   const r = mediaPonderada(linhas.map((l) => ({ peso: l.peso, valor: l.score })));
-  return { valor: r.valor, cobertura: r.n, total: linhas.length };
+  const coberturaFrac = linhas.length > 0 ? r.n / linhas.length : 0;
+  return {
+    valor: r.valor,
+    cobertura: r.n,
+    total: linhas.length,
+    conviccao: classificarConviccao(r.valor, coberturaFrac),
+  };
 }
 
 export function calcularSaudeCarteira(linhas: LinhaSaude[]): SaudeCarteira {

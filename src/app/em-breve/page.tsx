@@ -45,6 +45,11 @@ const MODULOS: Record<string, { nome: string; oque: string; destrava: string }> 
     oque: "Ambiente para testar novas réguas e pesos do algoritmo em rascunho, comparando com a versão vigente antes de promover (sempre criando versão nova, nunca sobrescrevendo).",
     destrava: "Track record da versão 1 — só faz sentido testar variações quando houver base de comparação real.",
   },
+  rebalancear: {
+    nome: "Rebalancear carteira",
+    oque: "Sugestão de quanto comprar ou vender de cada posição para levar a carteira de volta a um peso alvo — por posição ou por modelo de negócio. O botão já existe em Minha Carteira; o motor por trás dele ainda não.",
+    destrava: "Falta definir e registrar a régua de \"peso alvo\" — decisão sua (Carlos), não um cálculo automático. Sem essa régua definida e versionada, qualquer sugestão de rebalanceamento seria um número inventado, não uma regra.",
+  },
 };
 
 export default async function EmBreve({
