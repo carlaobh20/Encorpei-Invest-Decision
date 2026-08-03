@@ -38,6 +38,7 @@ jobs:
           git add supabase/migrations/002_seed_fundamentos.sql tools/backfill_relatorio.md
           git add supabase/migrations/008_seed_acoes.sql 2>/dev/null || true
           git add -f tools/dados/fundamentos.json 2>/dev/null || true
+          git add -f tools/dados/fluxo_caixa.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Nada mudou."
           else

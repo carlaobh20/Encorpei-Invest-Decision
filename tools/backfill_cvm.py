@@ -230,6 +230,45 @@ def extrair(dre, bpa, bpp, anual: bool, fonte: str, resultados: dict):
         )
 
 
+def extrair_dfc(z: zipfile.ZipFile, ano: int, anual: bool, fonte: str, fluxo: dict):
+    """DFC consolidada (método indireto; cai p/ direto se preciso).
+
+    Extrai por período: caixa operacional (6.01), fluxo de investimento
+    (6.02), capex (linhas de imobilizado/intangível dentro do 6.02),
+    dividendos+JCP pagos e recompras (dentro do 6.03). ITR de fluxo é
+    ACUMULADO no ano (jan até o fim do trimestre) — guardamos assim mesmo,
+    com o período explícito; quem consome anualiza com regra própria.
+    Conta ausente vira None — nunca inventamos.
+    """
+    tipo = "dfp" if anual else "itr"
+    df = ler_csv(z, f"DFC_MI_con_{ano}.csv")
+    if df is None or df.empty:
+        df = ler_csv(z, f"DFC_MD_con_{ano}.csv")
+    if df is None or df.empty:
+        return
+    grupos = df.groupby(["TICKER", "DT_INI_EXERC", "DT_FIM_EXERC"])
+    for (ticker, ini, fim), g in grupos:
+        d = dias(ini, fim)
+        if d is None:
+            continue
+        if anual and not (330 <= d <= 400):
+            continue
+        # ITR de DFC: acumulado jan->fim do tri (90 a ~290 dias); aceitar tudo
+        cx_op = valor(g, cds=["6.01"])
+        fl_inv = valor(g, cds=["6.02"])
+        sub_inv = g[g["CD_CONTA"].str.startswith("6.02.", na=False)]
+        capex = valor(sub_inv, ds_regex=r"IMOBILIZADO|INTANGIVEL")
+        sub_fin = g[g["CD_CONTA"].str.startswith("6.03.", na=False)]
+        dividendos = valor(sub_fin, ds_regex=r"DIVIDENDOS|JUROS SOBRE (O )?CAPITAL|JCP|PROVENTOS")
+        recompra = valor(sub_fin, ds_regex=r"TESOURARIA|RECOMPRA")
+        if cx_op is None and fl_inv is None and dividendos is None:
+            continue
+        fluxo[(ticker, str(fim), fonte, str(ini))] = dict(
+            caixa_operacional=cx_op, fluxo_investimento=fl_inv, capex=capex,
+            dividendos_jcp=dividendos, recompras=recompra, dias=d, tipo=tipo,
+        )
+
+
 def sql_num(x):
     return "null" if x is None else f"{x:.4f}" if abs(x) < 1000 else f"{x:.0f}"
 
@@ -336,6 +375,7 @@ on conflict (ticker) do update
 def main():
     resultados: dict = {}
     acoes: dict = {}
+    fluxo: dict = {}
 
     for ano in ANOS_DFP:
         z = baixar_zip(f"{BASE}/DFP/DADOS/dfp_cia_aberta_{ano}.zip")
@@ -348,6 +388,7 @@ def main():
         if dre is None or bpa is None or bpp is None:
             continue
         extrair(dre, bpa, bpp, anual=True, fonte="cvm_dfp", resultados=resultados)
+        extrair_dfc(z, ano, anual=True, fonte="cvm_dfp", fluxo=fluxo)
         log(f"DFP {ano}: acumulado {len(resultados)} períodos")
 
     for ano in ANOS_ITR:
@@ -361,6 +402,7 @@ def main():
         if dre is None or bpa is None or bpp is None:
             continue
         extrair(dre, bpa, bpp, anual=False, fonte="cvm_itr", resultados=resultados)
+        extrair_dfc(z, ano, anual=False, fonte="cvm_itr", fluxo=fluxo)
         log(f"ITR {ano}: acumulado {len(resultados)} períodos")
 
     # ---------- SQL ----------
@@ -423,6 +465,14 @@ def main():
             "acoes_totais": acoes_json,
         }, f, ensure_ascii=False)
     log(f"JSON de sincronização: {len(fundamentos_json)} períodos + {len(acoes_json)} ações")
+
+    fluxo_json = [
+        {"ticker": t, "competencia": fim, "fonte": fonte, "inicio": ini, **m}
+        for (t, fim, fonte, ini), m in sorted(fluxo.items())
+    ]
+    with open("tools/dados/fluxo_caixa.json", "w") as f:
+        _json.dump({"gerado_em": str(date.today()), "fluxo": fluxo_json}, f, ensure_ascii=False)
+    log(f"DFC: {len(fluxo_json)} períodos de fluxo de caixa extraídos")
 
     # ---------- relatório ----------
     por_ticker = {}

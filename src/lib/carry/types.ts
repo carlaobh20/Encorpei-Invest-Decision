@@ -36,6 +36,12 @@ export type CarryEntrada = {
   alavancagem: number | null; // dívida líquida / patrimônio
   crescReceitaAnual: number | null; // 2025 vs 2024
   ehFinanceira: boolean; // bancos/seguradoras: roic/dívida não se aplicam
+  /** dividendos+JCP pagos nos últimos 12m (DFC/CVM) — destrava o nível Growth */
+  dividendosJcpLtm?: number | null;
+  /** caixa operacional 12m (DFC) — destrava o nível Cash */
+  caixaOperacionalLtm?: number | null;
+  /** capex 12m (DFC) — destrava o nível Cash */
+  capexLtm?: number | null;
 };
 
 /** Contrato do motor de cálculo — o "ativo intelectual" plugável. */

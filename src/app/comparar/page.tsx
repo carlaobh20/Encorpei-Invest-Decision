@@ -10,7 +10,7 @@ import {
 import { Zoom } from "@/components/Zoom";
 import { ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { calcularScore } from "@/lib/score";
-import { carryVigente, type CarryResultado } from "@/lib/carry";
+import { escadaCarry, type CarryResultado, type DegrauCarry } from "@/lib/carry";
 
 export const dynamic = "force-dynamic";
 
@@ -93,6 +93,7 @@ export default async function Comparar({
     ticker: string; nome: string; cor: string;
     nota: number | null; notaOficial: boolean; confianca: string | null;
     carry: CarryResultado | null;
+    escada: DegrauCarry[];
   }[] = [];
   let metricas: Metrica[] = [];
   let resumoExec: string[] = [];
@@ -186,7 +187,7 @@ export default async function Comparar({
       const roic4 = roicMedia4Tri(fs);
       const alav = rec?.divida_liquida != null && pl && pl > 0 ? Number(rec.divida_liquida) / pl : null;
       const ehFinanceira = (rec?.roic ?? null) === null && (rec?.divida_liquida ?? null) === null;
-      const carry = carryVigente().calcular({
+      const escada = escadaCarry({
         lucroLtm,
         marketCap: mc,
         roic4,
@@ -195,11 +196,16 @@ export default async function Comparar({
         alavancagem: alav,
         crescReceitaAnual: cresc((f) => (f.receita_liquida != null ? Number(f.receita_liquida) : null)),
         ehFinanceira,
+        dividendosJcpLtm: null, // destrava com a migração 011 + sync da DFC
+        caixaOperacionalLtm: null,
+        capexLtm: null,
       });
+      const carry = escada[0].resultado;
 
       return {
         ticker: t,
         carry,
+        escada,
         roic4,
         roe: lucroLtm !== null && pl && pl > 0 ? lucroLtm / pl : null,
         margemBruta: rec?.margem_bruta != null ? Number(rec.margem_bruta) : null,
@@ -233,6 +239,7 @@ export default async function Comparar({
         notaOficial: c.notaOficial,
         confianca: c.confianca,
         carry: c.carry,
+        escada: c.escada,
       };
     });
 
@@ -357,7 +364,7 @@ export default async function Comparar({
           <section className="rounded-2xl border border-sky-400/20 bg-sky-500/[0.05] p-5">
             <div className="flex items-baseline justify-between">
               <h2 className="text-[11px] uppercase tracking-[0.25em] text-sky-300/90">
-                Encorpei Carry — capacidade estimada de render acima da inflação
+                Encorpei Carry Engine — a escada até o Retorno Intrínseco
               </h2>
               <span className="text-[10px] text-slate-500">v1 · piso conservador · determinístico</span>
             </div>
@@ -377,9 +384,26 @@ export default async function Comparar({
                       : "—"}
                     <span className="ml-1 text-xs font-normal text-slate-500">a.a.</span>
                   </p>
+                  {/* a escada dos 5 níveis — cada um no seu estado real */}
+                  <ul className="mt-2 space-y-1 border-t border-white/5 pt-2">
+                    {r.escada.slice(1).map((d) => (
+                      <li key={d.nivel} className="flex items-baseline justify-between gap-2 text-[10.5px]">
+                        <span className="text-slate-500">{d.nome}</span>
+                        {d.resultado?.carryReal != null ? (
+                          <span className="shrink-0 font-mono font-semibold text-sky-200">
+                            IPCA+{(d.resultado.carryReal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                          </span>
+                        ) : (
+                          <span className="shrink-0 text-slate-600" title={d.pendencia ?? ""}>
+                            aguarda dados
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                   {r.carry && r.carry.fatores.length > 0 && (
                     <ul className="mt-2 space-y-0.5">
-                      {r.carry.fatores.slice(0, 4).map((f, i) => (
+                      {r.carry.fatores.slice(0, 3).map((f, i) => (
                         <li key={i} className={`text-[11px] leading-snug ${
                           f.direcao === "sustenta" ? "text-emerald-300/80" : "text-amber-300/80"
                         }`}>
@@ -395,12 +419,14 @@ export default async function Comparar({
               ))}
             </div>
             <p className="mt-3 text-[10.5px] leading-snug text-slate-500">
-              Como é calculado (v1): lucro dos últimos 12 meses ÷ valor de mercado a preços de
-              hoje — o rendimento REAL que o lucro atual entrega num cenário sem crescimento,
-              por isso &quot;piso&quot;. Lucros tendem a acompanhar a inflação, daí a leitura &quot;IPCA +&quot;.
-              A v2 somará o crescimento reinvestido (retenção × ROIC) quando o pipeline ler
-              dividendos da CVM. <span className="text-slate-400">Estimativa baseada nos
-              fundamentos atuais — NÃO é retorno garantido nem promessa de rentabilidade.</span>
+              O número grande é o NÍVEL 1 (Carry Floor): lucro 12m ÷ valor de mercado — o pior
+              cenário, empresa que nunca mais cresce. Os níveis 2-5 acendem conforme os dados
+              oficiais chegam (o robô diário já coleta a DFC): Growth soma o reinvestimento
+              (retenção × ROIC), Cash troca lucro contábil por geração de caixa, Allocation mede
+              o que chega ao acionista, e o Retorno Intrínseco integra tudo — fórmulas abertas em
+              docs/carry-engine.md do repositório. <span className="text-slate-400">Estimativas
+              baseadas nos fundamentos atuais — NÃO é retorno garantido nem promessa de
+              rentabilidade.</span>
             </p>
           </section>
 
