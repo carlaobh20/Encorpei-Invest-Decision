@@ -81,6 +81,19 @@ só observei" já registrada por você aparece corretamente como "Neutro"
 (nunca direcional). Commit `eca1462`. Detalhe completo em
 `roadmap/pic01-patrimonio-v1.md`.
 
+## NOVO (03/08 ~19h30): DIÁRIO — PIN REMOVIDO (pedido do Carlos) ✅ NO AR
+Carlos pediu pra tirar a chave/PIN exigida pra registrar decisão em
+`/diario`. Antes de tirar, checei o risco: confirmado nas configurações do
+projeto na Vercel (`get_project_deployment_protection`) que o domínio
+inteiro já tem **Vercel Authentication (SSO)** ativo — bloqueia qualquer
+acesso de quem não é membro do time `carlos-ferros-projects`. O PIN era
+uma segunda trava redundante num app de usuário único; removê-lo não abre
+o Diário pro público, porque quem não tem login na Vercel do Carlos nem
+chega na página. `usuarioLogado()` mantido no código, sem função de gate
+hoje (login próprio/Fase 4 ainda não ativado), só pra já registrar o autor
+quando ativar. tsc + vitest (148/148) + build limpos, commit `523f133`,
+verificado ao vivo — campo "Chave do sistema" sumiu do formulário.
+
 ## NOVO (03/08 ~18h): AUDITORIA DE DADOS — dívida/ROIC de bancos + valor de mercado do Sabesp ✅ CORRIGIDO E NO AR
 Carlos reportou dois problemas concretos, com print do Radar: "Bradesco não tem dívida, aí mostra com muita dívida" e "Sabesp não tem os números batendo com a realidade". Investigação confirmou os dois, e achou que o mesmo padrão de bug se repetia em 4 lugares do sistema — incluindo o motor OFICIAL que grava nota imutável.
 
