@@ -48,6 +48,11 @@ export type ResultadoPatrimonio = {
   posicoesForaDaSerie: string[]; // sem data_compra — não entraram
   drawdownMaximo: number | null; // negativo, ex.: -0.12 = -12%
   sharpe: number | null;
+  /** desvio padrão anualizado dos retornos diários da carteira (não do excesso vs. CDI) */
+  volatilidadeAnualizada: number | null;
+  /** mesma lógica do Sharpe, mas só penaliza desvio ABAIXO do CDI (downside deviation) */
+  sortino: number | null;
+  /** cobre Sharpe, Sortino e Volatilidade — as três nascem do mesmo gate honesto */
   motivoSemSharpe: string | null;
   rentabilidadeTotal: number | null;
   alpha: { vsCdi: number | null; vsIpca: number | null; vsIbovespa: number | null };
@@ -127,6 +132,8 @@ export function calcularSeriePatrimonio(input: {
       posicoesForaDaSerie: [],
       drawdownMaximo: null,
       sharpe: null,
+      volatilidadeAnualizada: null,
+      sortino: null,
       motivoSemSharpe: "Sem posições datadas para montar a série.",
       rentabilidadeTotal: null,
       alpha: { vsCdi: null, vsIpca: null, vsIbovespa: null },
@@ -221,16 +228,21 @@ export function calcularSeriePatrimonio(input: {
         : null,
   };
 
-  // Sharpe: só com aporte único (senão fluxo de caixa distorce retorno
-  // diário ingênuo) — corte honesto em vez de número enganoso.
+  // Sharpe/Sortino/Volatilidade: só com aporte único (senão fluxo de caixa
+  // distorce retorno diário ingênuo) — corte honesto em vez de número
+  // enganoso, e as três métricas nascem do MESMO gate (nunca um mais frouxo
+  // que o outro).
   const datasCompraUnicas = new Set(posicoes.map((p) => p.dataCompra));
   let sharpe: number | null = null;
+  let volatilidadeAnualizada: number | null = null;
+  let sortino: number | null = null;
   let motivoSemSharpe: string | null = null;
+  let gatePassou = false;
   if (datasCompraUnicas.size > 1) {
     motivoSemSharpe =
-      "Sharpe indisponível: há aportes em datas diferentes, e sem o fluxo de caixa completo o retorno diário ingênuo ficaria distorcido nos dias de aporte.";
+      "Sharpe/Sortino/Volatilidade indisponíveis: há aportes em datas diferentes, e sem o fluxo de caixa completo o retorno diário ingênuo ficaria distorcido nos dias de aporte.";
   } else if (pontos.length < 20) {
-    motivoSemSharpe = "Sharpe indisponível: menos de 20 pregões na série ainda.";
+    motivoSemSharpe = "Sharpe/Sortino/Volatilidade indisponíveis: menos de 20 pregões na série ainda.";
   } else {
     const retornos: number[] = [];
     for (let i = 1; i < pontos.length; i++) {
@@ -245,13 +257,29 @@ export function calcularSeriePatrimonio(input: {
       if (a && b) cdiRetornos.push(b / a - 1);
     }
     if (retornos.length >= 20 && cdiRetornos.length === retornos.length) {
+      gatePassou = true;
       const excesso = retornos.map((r, i) => r - cdiRetornos[i]);
       const media = excesso.reduce((a, b) => a + b, 0) / excesso.length;
       const variancia = excesso.reduce((a, b) => a + (b - media) ** 2, 0) / excesso.length;
       const desvio = Math.sqrt(variancia);
       sharpe = desvio > 0 ? (media / desvio) * Math.sqrt(252) : null;
+
+      // Sortino: mesmo excesso sobre o CDI, mas a "penalidade" no denominador
+      // só conta os dias em que a carteira ficou ABAIXO do CDI (downside
+      // deviation) — dias em que ela supera o CDI não entram como "risco".
+      const downsideVariancia =
+        excesso.reduce((a, b) => a + (b < 0 ? b ** 2 : 0), 0) / excesso.length;
+      const downsideDesvio = Math.sqrt(downsideVariancia);
+      sortino = downsideDesvio > 0 ? (media / downsideDesvio) * Math.sqrt(252) : null;
+
+      // Volatilidade: desvio padrão anualizado dos retornos DIÁRIOS da
+      // própria carteira (não do excesso vs. CDI) — leitura padrão de mercado.
+      const mediaRetornos = retornos.reduce((a, b) => a + b, 0) / retornos.length;
+      const varianciaRetornos =
+        retornos.reduce((a, b) => a + (b - mediaRetornos) ** 2, 0) / retornos.length;
+      volatilidadeAnualizada = Math.sqrt(varianciaRetornos) * Math.sqrt(252);
     } else {
-      motivoSemSharpe = "Sharpe indisponível: série de CDI não cobre todos os pregões da carteira.";
+      motivoSemSharpe = "Sharpe/Sortino/Volatilidade indisponíveis: série de CDI não cobre todos os pregões da carteira.";
     }
   }
 
@@ -260,7 +288,9 @@ export function calcularSeriePatrimonio(input: {
     posicoesForaDaSerie: [],
     drawdownMaximo,
     sharpe,
-    motivoSemSharpe: sharpe === null ? motivoSemSharpe : null,
+    volatilidadeAnualizada,
+    sortino,
+    motivoSemSharpe: gatePassou ? null : motivoSemSharpe,
     rentabilidadeTotal,
     alpha,
   };

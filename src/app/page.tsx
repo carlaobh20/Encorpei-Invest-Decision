@@ -2,22 +2,30 @@ import Link from "next/link";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { Shell } from "@/components/Shell";
 import { Sparkline } from "@/components/Sparkline";
+import { GraficoPatrimonio } from "@/components/GraficoPatrimonio";
 import { calcularRadar, candidatas } from "@/lib/radar";
 import { consolidarCarteira, type Posicao } from "@/lib/carteira";
 import { calcularPatrimonio } from "@/lib/patrimonio-dados";
 import { calcularTechnicals } from "@/lib/technical-dados";
+import { calcularConfluencias } from "@/lib/confluencia-dados";
+import { confluenciaMediaPonderada } from "@/lib/portfolio-health";
 import { gerarDecisionFeed, ROTULO_SUGESTAO, type DecisionFeedEntrada, type SugestaoFeed } from "@/lib/decision-feed";
 
 export const dynamic = "force-dynamic";
 
 /**
- * MEU PATRIMÔNIO (PIC 01, 03/08/2026) — a home responde em 5 segundos:
- * meu patrimônio está crescendo acima da inflação? · preciso agir? ·
- * o que mudou? · o que merece minha atenção?
- * Regra inegociável: todo número é REAL (banco/regras) ou o card diz
- * "em construção"/"registre X para habilitar" com o que destrava. Nada
- * decorativo, nada inventado. Tudo que já existia no Decision Center
- * continua aqui — só ganhou um andar novo em cima: o patrimônio.
+ * MEU PATRIMÔNIO (redesign "glass" premium, 03/08/2026) — hierarquia fixa
+ * pedida pelo Carlos, nunca ao contrário:
+ *   01 Meu Patrimônio · 02 Performance · 03 Minha Carteira ·
+ *   04 Oportunidades · 05 Alertas · 06 IA · 07 Empresas
+ *
+ * Regra inegociável: todo número renderizado vem de uma variável calculada
+ * a partir de dado real (banco/regras puras) — nunca um valor decorativo.
+ * Onde a métrica pedida não existe ainda de forma honesta (ex.: deltas
+ * diários de Carry/Confluence — dependem de um snapshot diário que ainda
+ * não existe), o card explica o motivo em vez de inventar um número ou uma
+ * seta. Todo o conteúdo que já existia (Mudanças, Radar, Universo por nota,
+ * Diário, Carteira, cenário macro) continua aqui — só reorganizado.
  */
 
 type ScoreRow = {
@@ -71,19 +79,51 @@ function fmtHora(d: string) {
     timeZone: "America/Sao_Paulo",
   });
 }
+const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const pctSinal = (v: number, casas = 1) =>
+  `${v >= 0 ? "+" : ""}${(v * 100).toLocaleString("pt-BR", { maximumFractionDigits: casas })}%`;
 
-function Card({
+/** Seção numerada de topo — reforça visualmente a hierarquia fixa 01→07. */
+function Secao({
+  numero, titulo, subtitulo, acao, children,
+}: {
+  numero: string; titulo: string; subtitulo?: string;
+  acao?: { href: string; rotulo: string }; children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[20px] border border-white/[0.06] bg-white/[0.03] p-5 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/10 text-[10px] font-semibold text-slate-500">
+            {numero}
+          </span>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-400">{titulo}</h2>
+        </div>
+        {acao && (
+          <Link href={acao.href} className="text-[11px] text-sky-400 hover:underline">
+            {acao.rotulo} →
+          </Link>
+        )}
+      </div>
+      {subtitulo && <p className="mt-1 max-w-2xl text-[11.5px] leading-relaxed text-slate-500">{subtitulo}</p>}
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+/** Painel interno (dentro de uma Seção) — mesmo visual das páginas internas. */
+function Painel({
   titulo, acao, children, futuro,
 }: {
   titulo: string; acao?: { href: string; rotulo: string };
   children: React.ReactNode; futuro?: boolean;
 }) {
   return (
-    <section className={`flex flex-col rounded-2xl border p-4 ${
-      futuro ? "border-white/5 bg-white/[0.015]" : "border-white/5 bg-white/[0.03]"
+    <section className={`flex flex-col rounded-[18px] border p-4 ${
+      futuro ? "border-white/5 bg-white/[0.012]" : "border-white/5 bg-white/[0.025]"
     }`}>
       <div className="flex items-baseline justify-between">
-        <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">{titulo}</h2>
+        <h3 className="text-[10.5px] uppercase tracking-[0.22em] text-slate-500">{titulo}</h3>
         {acao && (
           <Link href={acao.href} className="text-[11px] text-sky-400 hover:underline">
             {acao.rotulo} →
@@ -97,6 +137,19 @@ function Card({
       </div>
       <div className="mt-2 min-h-0 flex-1">{children}</div>
     </section>
+  );
+}
+
+/** Estatística tipo "stat tile" — número grande + rótulo, com corte honesto embutido. */
+function Stat({
+  rotulo, valor, cor = "text-slate-100", nota,
+}: { rotulo: string; valor: string; cor?: string; nota?: string }) {
+  return (
+    <div>
+      <p className={`font-mono text-xl font-bold ${cor}`}>{valor}</p>
+      <p className="text-[10px] uppercase tracking-wider text-slate-500">{rotulo}</p>
+      {nota && <p className="mt-0.5 text-[9.5px] leading-snug text-slate-600">{nota}</p>}
+    </div>
   );
 }
 
@@ -191,17 +244,22 @@ export default async function DecisionCenter() {
   const carteira =
     posicoes && posicoes.length > 0 ? consolidarCarteira(posicoes, ultimoPreco) : null;
 
-  // ---------- Patrimônio (PIC 01): série real vs CDI/IPCA/Ibovespa ----------
+  // ---------- Patrimônio: série real vs CDI/IPCA/Ibovespa ----------
   // Método e limitações documentados em src/lib/patrimonio.ts — resumo:
   // só entram posições com data de compra registrada; assume quantidade
   // constante desde essa data (sem ledger de trades parciais ainda).
   const patrimonio = await calcularPatrimonio(supabase);
 
-  // ---------- Decision Feed (PIC 01): ação sugerida por posição, só regras ----------
+  // ---------- Decision Feed + Confluence da carteira ----------
   let decisionFeed: ReturnType<typeof gerarDecisionFeed> = [];
+  let confluenciaCarteira: ReturnType<typeof confluenciaMediaPonderada> | null = null;
   if (carteira && carteira.linhas.length > 0) {
-    const technicalLinhas = await calcularTechnicals(supabase);
+    const [technicalLinhas, confluenciaLinhas] = await Promise.all([
+      calcularTechnicals(supabase),
+      calcularConfluencias(supabase),
+    ]);
     const technicalPorTicker = new Map(technicalLinhas.map((t) => [t.ticker, t.resultado]));
+    const confluenciaPorTicker = new Map(confluenciaLinhas.map((c) => [c.ticker, c.resultado.score]));
     const entradasFeed: DecisionFeedEntrada[] = carteira.linhas.map((l) => {
       const tec = technicalPorTicker.get(l.ticker);
       const timing = tec?.timing ?? null;
@@ -221,9 +279,14 @@ export default async function DecisionCenter() {
       };
     });
     decisionFeed = gerarDecisionFeed(entradasFeed);
+    // Confluence Score médio da carteira — ponderado pelo peso de cada
+    // posição no valor atual, só entram tickers com score calculável.
+    confluenciaCarteira = confluenciaMediaPonderada(
+      carteira.linhas.map((l) => ({ peso: l.peso ?? 0, score: confluenciaPorTicker.get(l.ticker) ?? null }))
+    );
   }
 
-  // ---------- hero: as respostas ----------
+  // ---------- hero / eventos ----------
   const eventos = (eventosRaw as unknown as EventoRow[]) ?? [];
   const agora = Date.now();
   const ev24 = eventos.filter((e) => agora - new Date(e.criado_em).getTime() < 24 * 3_600_000);
@@ -260,8 +323,8 @@ export default async function DecisionCenter() {
   );
   if (emRevisao > 0) {
     frases.push(`${emRevisao} tese${emRevisao > 1 ? "s" : ""} em revisão pede${emRevisao > 1 ? "m" : ""} estudo.`);
-  } else {
-    frases.push("Suas 11 teses seguem de pé.");
+  } else if (ranking.length > 0) {
+    frases.push(`Suas ${ranking.length} teses acompanhadas seguem de pé.`);
   }
   if (topCandidatas.length > 0) {
     frases.push(
@@ -271,294 +334,410 @@ export default async function DecisionCenter() {
   if (carteira && carteira.valorAtual !== null && carteira.resultadoPct !== null) {
     const sinal = carteira.resultadoPct >= 0 ? "+" : "−";
     frases.push(
-      `Sua carteira vale ${carteira.valorAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} (${sinal}${Math.abs(carteira.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% sobre o investido).`
+      `Sua carteira vale ${brl(carteira.valorAtual)} (${sinal}${Math.abs(carteira.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% sobre o investido).`
+    );
+  }
+  if (patrimonio && patrimonio.resultado.alpha.vsCdi !== null) {
+    const alpha = patrimonio.resultado.alpha.vsCdi;
+    frases.push(
+      alpha >= 0
+        ? `Desde a compra, a carteira supera o CDI em ${pctSinal(alpha)} — Alpha positivo.`
+        : `Desde a compra, a carteira está ${pctSinal(alpha)} (abaixo do CDI no período).`
     );
   }
 
+  const corAlpha = (v: number | null) =>
+    v === null ? "text-slate-600" : v >= 0 ? "text-emerald-400" : "text-red-400";
+
   return (
     <Shell ativo="/" titulo="Meu Patrimônio" subtitulo={hoje} rolagem>
-      {/* ================= HERO — o copiloto ================= */}
-      <section className="rounded-2xl border border-white/10 bg-white/[0.04] px-6 py-5 backdrop-blur">
-        <div className="flex flex-wrap items-start justify-between gap-6">
-          <div className="min-w-0 max-w-2xl">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-100">
-              {saudacao}, Carlos.
-            </h2>
-            <div className="mt-2 space-y-1">
+      {/* ================= ambiente: cenário macro (Focus) — sempre discreto, nunca compete com a hierarquia ================= */}
+      {focusPorInd.size > 0 && (
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-full border border-white/[0.05] bg-white/[0.015] px-5 py-2 text-[11px]">
+          <span className="text-slate-600">Cenário macro (Focus/BCB, {new Date().getFullYear()})</span>
+          {["IPCA", "Selic", "PIB Total", "Câmbio"].map((ind) => {
+            const f = focusPorInd.get(ind);
+            if (!f) return null;
+            const delta = f.anterior !== null ? f.atual - f.anterior : null;
+            return (
+              <span key={ind} className="text-slate-400">
+                {ind}{" "}
+                <span className="font-mono text-slate-200">
+                  {f.atual.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+                  {ind === "Câmbio" ? "" : "%"}
+                </span>
+                {delta !== null && Math.abs(delta) >= 0.01 && (
+                  <span className={`ml-1 ${delta > 0 ? "text-amber-300" : "text-sky-300"}`}>
+                    {delta > 0 ? "▲" : "▼"}
+                  </span>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ================= 01 — MEU PATRIMÔNIO ================= */}
+      <Secao numero="01" titulo="Meu Patrimônio">
+        {carteira && carteira.valorAtual !== null ? (
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="text-[44px] font-semibold leading-none tracking-tight text-slate-100">
+                {brl(carteira.valorAtual)}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {carteira.resultadoPct !== null && (
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[12.5px] font-semibold ${
+                      carteira.resultadoPct >= 0
+                        ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"
+                        : "border-red-400/25 bg-red-500/10 text-red-300"
+                    }`}
+                  >
+                    {pctSinal(carteira.resultadoPct)} sobre o preço médio
+                  </span>
+                )}
+                {patrimonio && patrimonio.resultado.rentabilidadeTotal !== null && (
+                  <span className="text-[12.5px] text-slate-500">
+                    {pctSinal(patrimonio.resultado.rentabilidadeTotal)} desde a data de compra registrada
+                  </span>
+                )}
+              </div>
+            </div>
+            <p className="max-w-xs text-right text-[11px] leading-relaxed text-slate-500">
+              {carteira.linhas.length} posiç{carteira.linhas.length > 1 ? "ões" : "ão"} reais registradas · preço
+              oficial mais recente · nunca recomendação
+            </p>
+          </div>
+        ) : (
+          <div>
+            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] uppercase tracking-wider text-slate-600">
+              em construção
+            </span>
+            <p className="mt-2 text-[12.5px] leading-relaxed text-slate-500">
+              {posicoes === null ? (
+                <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
+              ) : (
+                <>
+                  Registre suas posições reais (quantidade, preço médio e — se quiser habilitar Performance —
+                  a data de compra) e este painel passa a mostrar o patrimônio calculado sobre o que você DE
+                  FATO tem.{" "}
+                  <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+      </Secao>
+
+      {/* ================= 02 — PERFORMANCE ================= */}
+      <Secao
+        numero="02"
+        titulo="Performance"
+        subtitulo="Carteira real vs. CDI, Ibovespa e IPCA — mesma simulação de aporte para os quatro, comparável em R$."
+        acao={carteira ? { href: "/saude-carteira", rotulo: "saúde da carteira" } : undefined}
+      >
+        {patrimonio && patrimonio.resultado.pontos.length >= 2 ? (
+          <>
+            <GraficoPatrimonio pontos={patrimonio.resultado.pontos} />
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-white/5 pt-4 sm:grid-cols-3 lg:grid-cols-6">
+              <Stat
+                rotulo="Alpha vs. CDI"
+                valor={patrimonio.resultado.alpha.vsCdi !== null ? pctSinal(patrimonio.resultado.alpha.vsCdi) : "—"}
+                cor={corAlpha(patrimonio.resultado.alpha.vsCdi)}
+              />
+              <Stat
+                rotulo="Alpha vs. IPCA"
+                valor={patrimonio.resultado.alpha.vsIpca !== null ? pctSinal(patrimonio.resultado.alpha.vsIpca) : "—"}
+                cor={corAlpha(patrimonio.resultado.alpha.vsIpca)}
+              />
+              <Stat
+                rotulo="Alpha vs. Ibovespa"
+                valor={patrimonio.resultado.alpha.vsIbovespa !== null ? pctSinal(patrimonio.resultado.alpha.vsIbovespa) : "—"}
+                cor={corAlpha(patrimonio.resultado.alpha.vsIbovespa)}
+              />
+              <Stat
+                rotulo="Maior queda (drawdown)"
+                valor={patrimonio.resultado.drawdownMaximo !== null ? pctSinal(patrimonio.resultado.drawdownMaximo) : "—"}
+              />
+              <Stat
+                rotulo="Sharpe (vs. CDI)"
+                valor={patrimonio.resultado.sharpe !== null ? patrimonio.resultado.sharpe.toFixed(2) : "—"}
+              />
+              <Stat
+                rotulo="Sortino (downside vs. CDI)"
+                valor={patrimonio.resultado.sortino !== null ? patrimonio.resultado.sortino.toFixed(2) : "—"}
+              />
+              <Stat
+                rotulo="Volatilidade anualizada"
+                valor={
+                  patrimonio.resultado.volatilidadeAnualizada !== null
+                    ? `${(patrimonio.resultado.volatilidadeAnualizada * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                    : "—"
+                }
+              />
+            </div>
+            {patrimonio.resultado.motivoSemSharpe && (
+              <p className="mt-3 text-[10.5px] leading-snug text-slate-600">{patrimonio.resultado.motivoSemSharpe}</p>
+            )}
+          </>
+        ) : (
+          <p className="text-[12.5px] leading-relaxed text-slate-500">
+            {!patrimonio || patrimonio.posicoesForaDaSerie.length === 0 ? (
+              <>
+                Ainda não há série suficiente (2+ pregões) desde a data de compra para desenhar o gráfico e comparar
+                com CDI/IPCA/Ibovespa.
+              </>
+            ) : (
+              <>
+                Comparação com CDI/IPCA/Ibovespa ainda indisponível — falta a data de compra de{" "}
+                <span className="font-mono text-slate-400">{patrimonio.posicoesForaDaSerie.join(", ")}</span>. Nunca
+                estimamos essa data por você:{" "}
+                <Link href="/carteira" className="text-sky-400 hover:underline">registre em /carteira →</Link>
+              </>
+            )}
+          </p>
+        )}
+      </Secao>
+
+      {/* ================= 03 — MINHA CARTEIRA ================= */}
+      <Secao numero="03" titulo="Minha Carteira" acao={{ href: "/carteira", rotulo: "carteira completa" }}>
+        {carteira ? (
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+            <Painel titulo="Resumo">
+              <div className="grid grid-cols-2 gap-4">
+                <Stat rotulo="Investido" valor={brl(carteira.valorInvestido)} />
+                <Stat
+                  rotulo="Resultado"
+                  valor={carteira.resultado !== null ? brl(carteira.resultado) : "—"}
+                  cor={carteira.resultado === null ? "text-slate-600" : carteira.resultado >= 0 ? "text-emerald-400" : "text-red-400"}
+                />
+                <Stat
+                  rotulo="Confluence médio"
+                  valor={
+                    confluenciaCarteira && confluenciaCarteira.valor !== null
+                      ? Math.round(confluenciaCarteira.valor).toString()
+                      : "—"
+                  }
+                  cor={confluenciaCarteira && confluenciaCarteira.valor !== null ? "text-sky-300" : "text-slate-600"}
+                  nota={
+                    confluenciaCarteira
+                      ? `cobertura ${confluenciaCarteira.cobertura}/${confluenciaCarteira.total} posições`
+                      : undefined
+                  }
+                />
+                <Stat rotulo="Posições" valor={String(carteira.linhas.length)} />
+              </div>
+            </Painel>
+
+            <Painel titulo="Ação sugerida por posição">
+              {decisionFeed.length === 0 ? (
+                <p className="text-[12px] text-slate-500">
+                  Sem dado técnico suficiente ainda para sugerir prioridade por posição.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {decisionFeed.map((f) => (
+                    <div
+                      key={f.ticker}
+                      title={f.explicacao}
+                      className={`rounded-lg border px-2.5 py-1.5 text-[11.5px] ${SUGESTAO_COR[f.sugestao]}`}
+                    >
+                      <span className="font-mono font-semibold">{f.ticker}</span>{" "}
+                      <span className="opacity-90">{ROTULO_SUGESTAO[f.sugestao]}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="mt-2 text-[10px] text-slate-600">100% por regras explícitas — nunca &quot;comprar&quot;/&quot;vender&quot;</p>
+            </Painel>
+
+            <Painel titulo="Suas últimas decisões" acao={{ href: "/diario", rotulo: "diário" }}>
+              {decisoes.length === 0 ? (
+                <p className="text-sm text-slate-500">Nenhuma decisão registrada ainda.</p>
+              ) : (
+                <div className="space-y-2">
+                  {decisoes.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-[12.5px]">
+                      <span>
+                        <span className="font-mono font-semibold">{d.ticker}</span>
+                        <span className="ml-2 text-slate-400">{DECISAO_TXT[d.decisao] ?? d.decisao}</span>
+                      </span>
+                      <span className="text-[10px] text-slate-600">{fmtHora(d.criado_em)}</span>
+                    </div>
+                  ))}
+                  <p className="text-[10px] text-slate-600">registro imutável do Diário</p>
+                </div>
+              )}
+            </Painel>
+          </div>
+        ) : (
+          <div>
+            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] uppercase tracking-wider text-slate-600">
+              em construção
+            </span>
+            <p className="mt-2 text-[12px] leading-relaxed text-slate-500">
+              {posicoes === null ? (
+                <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
+              ) : (
+                <>
+                  Registre suas posições reais (quantidade e preço médio) e este bloco passa a mostrar resumo,
+                  Confluence e ação sugerida por posição.{" "}
+                  <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+      </Secao>
+
+      {/* ================= 04 — OPORTUNIDADES ================= */}
+      <Secao
+        numero="04"
+        titulo="Oportunidades"
+        subtitulo="Candidatas a ESTUDO pelas réguas v1 — prévia calculada na hora, nunca ordem de compra."
+        acao={{ href: "/radar", rotulo: "ver as 40" }}
+      >
+        {topCandidatas.length === 0 ? (
+          <p className="text-sm text-slate-500">Sem candidatas com dados suficientes hoje.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+            {topCandidatas.map((c) => {
+              const ps = precosPorTicker.get(c.ticker) ?? [];
+              return (
+                <Link
+                  key={c.ticker}
+                  href={`/tese/${c.ticker}`}
+                  className="flex flex-col gap-2 rounded-[16px] border border-white/5 bg-white/[0.02] px-3.5 py-3 transition-colors hover:bg-white/[0.04]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[13.5px]">
+                        <span className="font-mono font-semibold">{c.ticker}</span>
+                      </p>
+                      <p className="truncate text-[11px] text-slate-500">{c.nome}</p>
+                    </div>
+                    <span className={`text-xl font-bold ${corNota(c.nota)}`}>{c.nota}</span>
+                  </div>
+                  <Sparkline valores={[...ps].reverse().map((p) => Number(p.fechamento))} />
+                  <p className="text-[10.5px] text-slate-500">
+                    {c.caixaLiquido ? "caixa líquido" : "com dívida"} ·{" "}
+                    {c.pl !== null ? `preço/lucro ${c.pl.toFixed(1)}×` : "P/L —"} · confiança {c.confianca}
+                  </p>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </Secao>
+
+      {/* ================= 05 — ALERTAS ================= */}
+      <Secao numero="05" titulo="Alertas" acao={{ href: "/replay", rotulo: "replay completo" }}>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="flex gap-6 lg:col-span-1 lg:flex-col lg:gap-4">
+            <Stat
+              rotulo="Gatilhos (24h)"
+              valor={String(gat24)}
+              cor={gat24 > 0 ? "text-amber-300" : "text-slate-100"}
+            />
+            <Stat
+              rotulo="Mudanças de status (24h)"
+              valor={String(mud24)}
+              cor={mud24 > 0 ? "text-amber-300" : "text-slate-100"}
+            />
+            <Stat
+              rotulo="Teses em revisão"
+              valor={String(emRevisao)}
+              cor={emRevisao > 0 ? "text-amber-300" : "text-slate-100"}
+            />
+            <Stat
+              rotulo="Nota média (dia)"
+              valor={notaMedia !== null ? notaMedia.toFixed(0) : "—"}
+              cor={deltaNota !== null && deltaNota !== 0 ? (deltaNota > 0 ? "text-emerald-400" : "text-red-400") : "text-slate-100"}
+              nota={deltaNota !== null && deltaNota !== 0 ? `${deltaNota > 0 ? "▲" : "▼"} ${Math.abs(deltaNota).toFixed(1)} desde o pregão anterior` : undefined}
+            />
+          </div>
+          <div className="lg:col-span-2">
+            {eventos.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Nada mudou nas últimas 48h — dia tranquilo é o sistema dizendo: suas teses seguem de pé.
+              </p>
+            ) : (
+              <div className="space-y-2.5 border-l border-white/10 pl-4">
+                {eventos.slice(0, 6).map((e) => (
+                  <div key={e.id} className="relative">
+                    <span className="absolute -left-[21.5px] top-1.5 h-2 w-2 rounded-full bg-sky-400/70" />
+                    <p className="text-[10px] uppercase tracking-wider text-slate-600">
+                      {fmtHora(e.criado_em)} ·{" "}
+                      <Link href={`/tese/${e.teses?.ticker}`} className="font-mono text-sky-400/90 hover:underline">
+                        {e.teses?.ticker}
+                      </Link>{" "}
+                      · {e.tipo.replace(/_/g, " ")}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-slate-300">{e.explicacao}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-3 text-[10px] leading-snug text-slate-600">
+              Deltas diários de Carry médio, Confluence e Technical Score da carteira ainda não têm histórico dia a
+              dia para comparar — o snapshot começa a acumular hoje à noite (rodada das 20h30). Até lá, mostramos só
+              o que já é honestamente comparável: gatilhos, mudanças de status e nota média.
+            </p>
+          </div>
+        </div>
+      </Secao>
+
+      {/* ================= 06 — IA (resumo por regras) ================= */}
+      <Secao
+        numero="06"
+        titulo="IA"
+        subtitulo="Nunca decide — só explica em português o que as regras já calcularam. Nenhuma frase abaixo vem de um modelo de linguagem: é texto gerado por condição (se X e Y, escreve Z)."
+      >
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div className="rounded-[16px] border border-white/5 bg-white/[0.02] p-4">
+            <p className="text-[15px] font-semibold text-slate-100">{saudacao}, Carlos.</p>
+            <div className="mt-2 space-y-1.5">
               {frases.map((f, i) => (
                 <p
                   key={i}
-                  className={`text-[13.5px] leading-relaxed ${
-                    i === 0 && precisaAgir ? "text-amber-200" : "text-slate-300"
-                  }`}
+                  className={`text-[13px] leading-relaxed ${i === 0 && precisaAgir ? "text-amber-200" : "text-slate-300"}`}
                 >
                   {f}
                 </p>
               ))}
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-6 text-right">
-            <div>
-              <p className="text-2xl font-bold text-slate-100">
-                {notaMedia !== null ? notaMedia.toFixed(0) : "—"}
-                {deltaNota !== null && deltaNota !== 0 && (
-                  <span className={`ml-1 text-sm font-semibold ${deltaNota > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {deltaNota > 0 ? "▲" : "▼"}{Math.abs(deltaNota).toFixed(1)}
-                  </span>
-                )}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">nota média</p>
-            </div>
-            <div>
-              <p className={`text-2xl font-bold ${emRevisao > 0 ? "text-amber-300" : "text-slate-100"}`}>
-                {emRevisao}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">em revisão</p>
-            </div>
-            {lider && (
-              <div>
-                <p className="text-2xl font-bold">
-                  <Link href={`/tese/${lider.ticker}`} className="hover:underline">
-                    <span className="font-mono text-slate-100">{lider.ticker}</span>{" "}
-                    <span className="text-emerald-400">{lider.score_final}</span>
-                  </Link>
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">tese mais forte</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ================= MEU PATRIMÔNIO (PIC 01) — o novo centro ================= */}
-      {carteira && carteira.valorAtual !== null ? (
-        <section className="rounded-2xl border border-emerald-400/15 bg-emerald-500/[0.03] p-5">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[11px] uppercase tracking-[0.25em] text-emerald-300/80">Meu Patrimônio</h2>
-            <Link href="/saude-carteira" className="text-[11px] text-sky-400 hover:underline">
-              saúde da carteira →
-            </Link>
-          </div>
-          <div className="mt-3 flex flex-wrap items-end gap-x-8 gap-y-3">
-            <div>
-              <p className="text-3xl font-bold text-slate-100">
-                {carteira.valorAtual.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-              </p>
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">patrimônio atual</p>
-            </div>
-            {carteira.resultadoPct !== null && (
-              <div>
-                <p className={`text-xl font-bold ${carteira.resultadoPct >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {carteira.resultadoPct >= 0 ? "+" : ""}
-                  {(carteira.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
-                </p>
-                <p className="text-[10px] uppercase tracking-wider text-slate-500">sobre o preço médio</p>
-              </div>
-            )}
-            {patrimonio && patrimonio.resultado.rentabilidadeTotal !== null && (
-              <>
+            <div className="mt-3 flex flex-wrap gap-4 border-t border-white/5 pt-3">
+              <Stat rotulo="Nota média" valor={notaMedia !== null ? notaMedia.toFixed(0) : "—"} />
+              <Stat rotulo="Em revisão" valor={String(emRevisao)} cor={emRevisao > 0 ? "text-amber-300" : "text-slate-100"} />
+              {lider && (
                 <div>
-                  <p className="text-xl font-bold text-slate-100">
-                    {(patrimonio.resultado.rentabilidadeTotal * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                  <p className="text-xl font-bold">
+                    <Link href={`/tese/${lider.ticker}`} className="hover:underline">
+                      <span className="font-mono text-slate-100">{lider.ticker}</span>{" "}
+                      <span className="text-emerald-400">{lider.score_final}</span>
+                    </Link>
                   </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">rentabilidade desde a compra</p>
+                  <p className="text-[10px] uppercase tracking-wider text-slate-500">tese mais forte</p>
                 </div>
-                <div>
-                  <p className={`text-xl font-bold ${
-                    patrimonio.resultado.alpha.vsCdi === null
-                      ? "text-slate-600"
-                      : patrimonio.resultado.alpha.vsCdi >= 0
-                      ? "text-emerald-400"
-                      : "text-red-400"
-                  }`}>
-                    {patrimonio.resultado.alpha.vsCdi !== null
-                      ? `${patrimonio.resultado.alpha.vsCdi >= 0 ? "+" : ""}${(patrimonio.resultado.alpha.vsCdi * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} p.p.`
-                      : "—"}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">alpha vs. CDI</p>
-                </div>
-                <div>
-                  <p className={`text-xl font-bold ${
-                    patrimonio.resultado.alpha.vsIbovespa === null
-                      ? "text-slate-600"
-                      : patrimonio.resultado.alpha.vsIbovespa >= 0
-                      ? "text-emerald-400"
-                      : "text-red-400"
-                  }`}>
-                    {patrimonio.resultado.alpha.vsIbovespa !== null
-                      ? `${patrimonio.resultado.alpha.vsIbovespa >= 0 ? "+" : ""}${(patrimonio.resultado.alpha.vsIbovespa * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} p.p.`
-                      : "—"}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">alpha vs. Ibovespa</p>
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-slate-100">
-                    {patrimonio.resultado.drawdownMaximo !== null
-                      ? `${(patrimonio.resultado.drawdownMaximo * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-                      : "—"}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">maior queda (drawdown)</p>
-                </div>
-                <div>
-                  <p className="text-xl font-bold text-slate-100">
-                    {patrimonio.resultado.sharpe !== null ? patrimonio.resultado.sharpe.toFixed(2) : "—"}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">Sharpe (vs. CDI)</p>
-                </div>
-              </>
-            )}
-          </div>
-          {(!patrimonio || patrimonio.resultado.rentabilidadeTotal === null) && (
-            <p className="mt-3 text-[11.5px] leading-relaxed text-slate-500">
-              Comparação com CDI/IPCA/Ibovespa e drawdown ainda indisponíveis
-              {patrimonio && patrimonio.posicoesForaDaSerie.length > 0 ? (
-                <>
-                  {" "}
-                  — falta a data de compra de{" "}
-                  <span className="font-mono text-slate-400">{patrimonio.posicoesForaDaSerie.join(", ")}</span>. Nunca
-                  estimamos essa data por você:{" "}
-                  <Link href="/carteira" className="text-sky-400 hover:underline">registre em /carteira →</Link>
-                </>
-              ) : (
-                "."
               )}
+            </div>
+          </div>
+
+          <Painel titulo="Calendário & IA explicativa" futuro>
+            <p className="text-[12px] leading-relaxed text-slate-500">
+              Agenda de resultados, dividendos e Copom ainda{" "}
+              <span className="text-slate-300">não tem fonte de dados conectada</span> — entra na expansão. A IA
+              explicativa por LLM (nunca decisória) entra ao configurar a chave da API; as explicações de hoje já
+              são 100% geradas por regras, como as desta seção.{" "}
+              <Link href="/em-breve?m=ia" className="text-sky-400 hover:underline">saiba mais →</Link>
             </p>
-          )}
-          {patrimonio && patrimonio.resultado.sharpe === null && patrimonio.resultado.motivoSemSharpe && (
-            <p className="mt-1 text-[10.5px] leading-snug text-slate-600">{patrimonio.resultado.motivoSemSharpe}</p>
-          )}
+          </Painel>
+        </div>
+      </Secao>
 
-          {decisionFeed.length > 0 && (
-            <div className="mt-4 border-t border-white/5 pt-3">
-              <p className="text-[10px] uppercase tracking-wider text-slate-500">Ação recomendada por posição — nunca &quot;comprar&quot;/&quot;vender&quot;</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {decisionFeed.map((f) => (
-                  <div
-                    key={f.ticker}
-                    title={f.explicacao}
-                    className={`rounded-lg border px-2.5 py-1.5 text-[11.5px] ${SUGESTAO_COR[f.sugestao]}`}
-                  >
-                    <span className="font-mono font-semibold">{f.ticker}</span>{" "}
-                    <span className="opacity-90">{ROTULO_SUGESTAO[f.sugestao]}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </section>
-      ) : (
-        <section className="rounded-2xl border border-white/5 bg-white/[0.015] p-5">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Meu Patrimônio</h2>
-            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[9.5px] uppercase tracking-wider text-slate-600">
-              em construção
-            </span>
-          </div>
-          <p className="mt-2 text-[12px] leading-relaxed text-slate-500">
-            {posicoes === null ? (
-              <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
-            ) : (
-              <>
-                Registre suas posições reais (com data de compra) e este painel passa a mostrar patrimônio,
-                rentabilidade e alpha contra CDI/IPCA/Ibovespa calculados sobre o que você DE FATO tem.{" "}
-                <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
-              </>
-            )}
-          </p>
-        </section>
-      )}
-
-      {/* ================= cenário macro (Focus) — acende com a 012 ================= */}
-      {focusPorInd.size > 0 && (
-        <section className="rounded-2xl border border-white/5 bg-white/[0.03] px-5 py-3">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-              Cenário macro — Relatório Focus (BCB), expectativa p/ {new Date().getFullYear()}
-            </h2>
-            <p className="text-[10px] text-slate-600">macro informa; quem decide são as suas teses</p>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-6">
-            {["IPCA", "Selic", "PIB Total", "Câmbio"].map((ind) => {
-              const f = focusPorInd.get(ind);
-              if (!f) return null;
-              const delta = f.anterior !== null ? f.atual - f.anterior : null;
-              return (
-                <div key={ind}>
-                  <p className="text-base font-bold text-slate-100">
-                    {f.atual.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                    {ind === "Câmbio" ? "" : "%"}
-                    {delta !== null && Math.abs(delta) >= 0.01 && (
-                      <span className={`ml-1 text-[11px] font-semibold ${delta > 0 ? "text-amber-300" : "text-sky-300"}`}>
-                        {delta > 0 ? "▲" : "▼"}{Math.abs(delta).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500">{ind}</p>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ================= linha 1: mudanças + radar ================= */}
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <Card titulo="Mudanças (48h)" acao={{ href: "/replay", rotulo: "replay completo" }}>
-          {eventos.length === 0 ? (
-            <p className="text-sm text-slate-500">
-              Nada mudou — dia tranquilo é o sistema dizendo: suas teses seguem de pé.
-            </p>
-          ) : (
-            <div className="space-y-2.5 border-l border-white/10 pl-4">
-              {eventos.slice(0, 6).map((e) => (
-                <div key={e.id} className="relative">
-                  <span className="absolute -left-[21.5px] top-1.5 h-2 w-2 rounded-full bg-sky-400/70" />
-                  <p className="text-[10px] uppercase tracking-wider text-slate-600">
-                    {fmtHora(e.criado_em)} ·{" "}
-                    <Link href={`/tese/${e.teses?.ticker}`} className="font-mono text-sky-400/90 hover:underline">
-                      {e.teses?.ticker}
-                    </Link>{" "}
-                    · {e.tipo.replace(/_/g, " ")}
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-slate-300">
-                    {e.explicacao}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
-
-        <Card titulo="Radar — merece sua atenção" acao={{ href: "/radar", rotulo: "ver as 40" }}>
-          {topCandidatas.length === 0 ? (
-            <p className="text-sm text-slate-500">Sem candidatas com dados suficientes hoje.</p>
-          ) : (
-            <div className="space-y-2">
-              {topCandidatas.map((c) => (
-                <div key={c.ticker} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="text-[13px]">
-                      <span className="font-mono font-semibold">{c.ticker}</span>
-                      <span className="ml-2 text-slate-400">{c.nome}</span>
-                    </p>
-                    <p className="text-[10.5px] text-slate-500">
-                      {c.caixaLiquido ? "caixa líquido" : "com dívida"} ·{" "}
-                      {c.pl !== null ? `preço/lucro ${c.pl.toFixed(1)}×` : "P/L —"} · confiança {c.confianca}
-                    </p>
-                  </div>
-                  <span className={`text-lg font-bold ${corNota(c.nota)}`}>{c.nota}</span>
-                </div>
-              ))}
-              <p className="text-[10px] text-slate-600">
-                candidatas a ESTUDO — prévia pelas réguas v1, nunca ordem de compra
-              </p>
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* ================= linha 2: universo por nota ================= */}
-      <Card titulo="Universo por nota (oficial)" acao={{ href: "/ranking", rotulo: "ranking" }}>
+      {/* ================= 07 — EMPRESAS (universo por nota) ================= */}
+      <Secao numero="07" titulo="Empresas · Universo por nota (oficial)" acao={{ href: "/ranking", rotulo: "ranking" }}>
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
@@ -625,79 +804,7 @@ export default async function DecisionCenter() {
             </tbody>
           </table>
         </div>
-      </Card>
-
-      {/* ================= linha 3: diário + placeholders honestos ================= */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-        <Card titulo="Suas últimas decisões" acao={{ href: "/diario", rotulo: "diário" }}>
-          {decisoes.length === 0 ? (
-            <p className="text-sm text-slate-500">Nenhuma decisão registrada ainda.</p>
-          ) : (
-            <div className="space-y-2">
-              {decisoes.map((d) => (
-                <div key={d.id} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-[12.5px]">
-                  <span>
-                    <span className="font-mono font-semibold">{d.ticker}</span>
-                    <span className="ml-2 text-slate-400">{DECISAO_TXT[d.decisao] ?? d.decisao}</span>
-                  </span>
-                  <span className="text-[10px] text-slate-600">{fmtHora(d.criado_em)}</span>
-                </div>
-              ))}
-              <p className="text-[10px] text-slate-600">
-                registro imutável — é este diário que mede se o sistema melhora suas decisões
-              </p>
-            </div>
-          )}
-        </Card>
-
-        {carteira ? (
-          <Card titulo="Sua carteira" acao={{ href: "/carteira", rotulo: "carteira" }}>
-            <div className="space-y-2">
-              {carteira.linhas.slice(0, 3).map((l) => (
-                <div key={l.ticker} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2 text-[12.5px]">
-                  <span className="font-mono font-semibold">{l.ticker}</span>
-                  <span className={`font-mono ${
-                    l.resultadoPct === null ? "text-slate-600" : l.resultadoPct >= 0 ? "text-emerald-400" : "text-red-400"
-                  }`}>
-                    {l.resultadoPct === null
-                      ? "—"
-                      : `${l.resultadoPct >= 0 ? "+" : ""}${(l.resultadoPct * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
-                  </span>
-                </div>
-              ))}
-              <p className="text-[10px] text-slate-600">
-                {carteira.linhas.length} posiç{carteira.linhas.length > 1 ? "ões" : "ão"} ·
-                resultado sobre o SEU preço médio — nunca recomendação
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <Card titulo="Sua carteira" futuro>
-            <p className="text-[12px] leading-relaxed text-slate-500">
-              {posicoes === null ? (
-                <>O módulo está pronto; falta aplicar a migração 014 no banco.</>
-              ) : (
-                <>
-                  Registre suas posições reais (quantidade e preço médio) e este
-                  card passa a mostrar patrimônio e resultado calculados sobre o
-                  que você DE FATO tem.{" "}
-                  <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
-                </>
-              )}
-            </p>
-          </Card>
-        )}
-
-        <Card titulo="Calendário & IA explicativa" futuro>
-          <p className="text-[12px] leading-relaxed text-slate-500">
-            Agenda de resultados, dividendos e Copom ainda{" "}
-            <span className="text-slate-300">não tem fonte de dados conectada</span> — entra na
-            expansão. A IA explicativa (nunca decisória) entra ao configurar a chave da API; as
-            explicações de hoje são geradas por regras.{" "}
-            <Link href="/em-breve?m=ia" className="text-sky-400 hover:underline">saiba mais →</Link>
-          </p>
-        </Card>
-      </div>
+      </Secao>
     </Shell>
   );
 }

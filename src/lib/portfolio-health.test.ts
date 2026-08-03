@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularSaudeCarteira, type LinhaSaude } from "./portfolio-health";
+import { calcularSaudeCarteira, confluenciaMediaPonderada, type LinhaSaude } from "./portfolio-health";
 
 describe("calcularSaudeCarteira", () => {
   it("carteira igualmente distribuída em 4 papéis: HHI = 0.25 (limite), rótulo alta", () => {
@@ -56,5 +56,40 @@ describe("calcularSaudeCarteira", () => {
     ];
     const r = calcularSaudeCarteira(linhas);
     expect(r.alocacaoPorModelo).toEqual([{ rotulo: "industrial", pct: 1 }]);
+  });
+});
+
+describe("confluenciaMediaPonderada", () => {
+  it("pondera pelo peso quando todas as posições têm Confluence Score", () => {
+    const r = confluenciaMediaPonderada([
+      { peso: 0.6, score: 80 },
+      { peso: 0.4, score: 50 },
+    ]);
+    expect(r.valor).toBeCloseTo(68, 6); // 0.6*80 + 0.4*50
+    expect(r.cobertura).toBe(2);
+    expect(r.total).toBe(2);
+  });
+
+  it("ignora posições sem score, mas reporta a cobertura real", () => {
+    const r = confluenciaMediaPonderada([
+      { peso: 0.5, score: 90 },
+      { peso: 0.5, score: null },
+    ]);
+    expect(r.valor).toBeCloseTo(90, 6); // só a posição com score entra, renormalizado
+    expect(r.cobertura).toBe(1);
+    expect(r.total).toBe(2);
+  });
+
+  it("nenhuma posição com score: valor null, cobertura zero", () => {
+    const r = confluenciaMediaPonderada([{ peso: 1, score: null }]);
+    expect(r.valor).toBeNull();
+    expect(r.cobertura).toBe(0);
+    expect(r.total).toBe(1);
+  });
+
+  it("lista vazia: valor null, total zero", () => {
+    const r = confluenciaMediaPonderada([]);
+    expect(r.valor).toBeNull();
+    expect(r.total).toBe(0);
   });
 });

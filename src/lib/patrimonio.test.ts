@@ -122,5 +122,72 @@ describe("calcularSeriePatrimonio", () => {
     });
     expect(resultado.sharpe).toBeNull();
     expect(resultado.motivoSemSharpe).toMatch(/aportes em datas diferentes/);
+    // mesmo gate honesto cobre Sortino e Volatilidade — nunca um mais frouxo
+    expect(resultado.sortino).toBeNull();
+    expect(resultado.volatilidadeAnualizada).toBeNull();
+  });
+
+  it("menos de 20 pregões: Sortino e Volatilidade também ficam indisponíveis (mesmo gate do Sharpe)", () => {
+    const resultado = calcularSeriePatrimonio({
+      posicoes: [{ ticker: "WEGE3", quantidade: 10, precoMedio: 10, dataCompra: "2026-01-01" }],
+      precosPorTicker: new Map([
+        ["WEGE3", datasPregao.map((d) => ({ data: d, fechamento: 10 }))],
+      ]),
+      cdi: datasPregao.map((d) => ({ data: d, valor: 0.05 })),
+      ipca: [{ data: "2026-01-01", valor: 0.4 }],
+      ibovespa: datasPregao.map((d) => ({ data: d, valor: 100000 })),
+      datasPregao,
+    });
+    expect(resultado.sharpe).toBeNull();
+    expect(resultado.sortino).toBeNull();
+    expect(resultado.volatilidadeAnualizada).toBeNull();
+    expect(resultado.motivoSemSharpe).toMatch(/menos de 20 pregões/);
+  });
+
+  it("aporte único, 25 pregões, carteira crescendo taxa ~constante e CDI plano: volatilidade ~0 e Sortino null (sem dias de downside)", () => {
+    const n = 25;
+    const datas = Array.from({ length: n }, (_, i) => `2026-01-${String(i + 1).padStart(2, "0")}`);
+    // crescimento composto constante de 1% ao dia — retornos praticamente
+    // idênticos todo dia, então desvio (e a "penalidade" de downside) ~0.
+    const precos = datas.map((d, i) => ({ data: d, fechamento: 100 * 1.01 ** i }));
+    const resultado = calcularSeriePatrimonio({
+      posicoes: [{ ticker: "WEGE3", quantidade: 1, precoMedio: 100, dataCompra: datas[0] }],
+      precosPorTicker: new Map([["WEGE3", precos]]),
+      cdi: datas.map((d) => ({ data: d, valor: 0 })), // CDI plano — excesso = retorno da carteira
+      ipca: [{ data: datas[0], valor: 0.4 }],
+      ibovespa: datas.map((d) => ({ data: d, valor: 100000 })),
+      datasPregao: datas,
+    });
+    expect(resultado.motivoSemSharpe).toBeNull();
+    expect(resultado.volatilidadeAnualizada).not.toBeNull();
+    expect(resultado.volatilidadeAnualizada!).toBeCloseTo(0, 3);
+    // sem nenhum dia de retorno abaixo do CDI, downside deviation = 0 → Sortino indefinido (não infinito)
+    expect(resultado.sortino).toBeNull();
+  });
+
+  it("aporte único, 25 pregões, carteira com dias de queda: Sortino calculado só com o desvio abaixo do CDI", () => {
+    const n = 25;
+    const datas = Array.from({ length: n }, (_, i) => `2026-02-${String(i + 1).padStart(2, "0")}`);
+    // zig-zag: sobe 3%, cai 1%, alternado — mistura de dias acima/abaixo do CDI (0%)
+    let preco = 100;
+    const precos = datas.map((d, i) => {
+      if (i > 0) preco *= i % 2 === 1 ? 1.03 : 0.99;
+      return { data: d, fechamento: preco };
+    });
+    const resultado = calcularSeriePatrimonio({
+      posicoes: [{ ticker: "WEGE3", quantidade: 1, precoMedio: 100, dataCompra: datas[0] }],
+      precosPorTicker: new Map([["WEGE3", precos]]),
+      cdi: datas.map((d) => ({ data: d, valor: 0 })),
+      ipca: [{ data: datas[0], valor: 0.4 }],
+      ibovespa: datas.map((d) => ({ data: d, valor: 100000 })),
+      datasPregao: datas,
+    });
+    expect(resultado.motivoSemSharpe).toBeNull();
+    expect(resultado.sharpe).not.toBeNull();
+    expect(resultado.sortino).not.toBeNull();
+    expect(resultado.volatilidadeAnualizada).not.toBeNull();
+    expect(resultado.volatilidadeAnualizada!).toBeGreaterThan(0);
+    // Sortino só penaliza o downside — deve ser maior que o Sharpe (que penaliza toda a variância)
+    expect(resultado.sortino!).toBeGreaterThan(resultado.sharpe!);
   });
 });

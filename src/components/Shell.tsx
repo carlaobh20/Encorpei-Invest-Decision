@@ -75,7 +75,7 @@ export function Shell({
   rolagem?: boolean;
 }) {
   return (
-    <main className="flex h-dvh overflow-hidden bg-slate-950 text-slate-100 [background:radial-gradient(70%_50%_at_30%_0%,rgba(56,189,248,0.05),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(16,185,129,0.04),transparent),#020617]">
+    <main className="flex h-dvh overflow-hidden bg-[#07111e] text-slate-100 [background:radial-gradient(75%_55%_at_25%_-8%,rgba(34,224,166,0.05),transparent),radial-gradient(60%_50%_at_100%_100%,rgba(56,189,248,0.045),transparent),#07111e]">
       {/* ---------- menu lateral ---------- */}
       <aside className="hidden w-52 shrink-0 flex-col border-r border-white/5 bg-white/[0.02] px-3 py-4 lg:flex">
         <Link href="/" className="px-2 text-sm font-semibold tracking-tight">

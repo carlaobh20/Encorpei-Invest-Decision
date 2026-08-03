@@ -64,6 +64,28 @@ function mediaPonderada(itens: { peso: number; valor: number | null }[]): { valo
   return { valor: soma / pesoTotal, n: disponiveis.length };
 }
 
+export type ConfluenciaMediaPonderada = {
+  /** média ponderada por peso na carteira do Confluence Score (0-100) por empresa; null sem cobertura */
+  valor: number | null;
+  /** quantas posições tinham Confluence Score calculável */
+  cobertura: number;
+  total: number;
+};
+
+/**
+ * Confluence Score da CARTEIRA — média ponderada por peso do Confluence
+ * Score (0-100) já calculado por empresa em confluencia.ts (via
+ * calcularConfluencias). Mesmo padrão de `mediaPonderada` usado acima para
+ * Carry/ROIC/valuation/sensibilidade: só pondera quem tem score, cobertura
+ * honesta reportada em vez de fingir dado que falta.
+ */
+export function confluenciaMediaPonderada(
+  linhas: { peso: number; score: number | null }[]
+): ConfluenciaMediaPonderada {
+  const r = mediaPonderada(linhas.map((l) => ({ peso: l.peso, valor: l.score })));
+  return { valor: r.valor, cobertura: r.n, total: linhas.length };
+}
+
 export function calcularSaudeCarteira(linhas: LinhaSaude[]): SaudeCarteira {
   const total = linhas.length;
   const concentracaoHHI = linhas.reduce((a, l) => a + l.peso ** 2, 0);
