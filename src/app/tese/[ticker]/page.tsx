@@ -16,6 +16,12 @@ import { classificarUrgencia, impactoEsperadoTexto, ROTULO_URGENCIA, type Urgenc
 import { classificarTendenciaNota } from "@/lib/thesis-monitor-dados";
 import { montarThesisReplay, type EventoTeseRaw, type VersaoTese } from "@/lib/thesis-replay-dados";
 import { gerarInvestmentStory } from "@/lib/investment-story-narrativa";
+import { mediaSetor, compararComSetor } from "@/lib/dash-narrativa";
+import { gerarCoachInsight } from "@/lib/coach-insights";
+import { gerarThesisLessons } from "@/lib/thesis-lessons";
+import { montarIntelligenceCapsule } from "@/lib/intelligence-capsule";
+import { InvestmentCoach } from "@/components/InvestmentCoach";
+import { IntelligenceCapsuleCard } from "@/components/IntelligenceCapsuleCard";
 import { montarForecastEmpresa } from "@/lib/empresa-forecast-dados";
 import { avaliarImpactoCarteira, ROTULO_CENARIO, type CenarioMacro } from "@/lib/scenario-engine";
 import { montarArvoreCausal, type NoArvoreCausal } from "@/lib/cause-effect";
@@ -323,6 +329,44 @@ export default async function EmpresaPage({ params }: { params: Promise<{ ticker
   const tendenciaNota = classificarTendenciaNota(notasAscendente.at(-2)?.nota ?? null, notasAscendente.at(-1)?.nota ?? null);
   const badge = decision && perfilTese ? badgeStatus(perfilTese.thesisStatus, decision.confluence) : null;
 
+  // ---------- Investment Coach Layer (Sprint 2.7) ----------
+  // Nenhum motor novo: Coach Insight/Thesis Lessons/Intelligence Capsule são
+  // regras/composição sobre Decision/InvestmentStory/radar já calculados
+  // acima. Comparação de setor reaproveita mediaSetor/compararComSetor
+  // (dash-narrativa.ts, Sprint 2.1) — mesmo comparador transversal já usado
+  // no Meu Dash, nenhum número novo inventado.
+  const radarPropria = radarLinhas.find((r) => r.ticker === tickerUp) ?? null;
+  const roicComparacaoSetor = compararComSetor(radarPropria?.roic4 ?? null, mediaSetor(tickerUp, empresa.setor, radarLinhas, (r) => r.roic4));
+  const carryComparacaoSetor = compararComSetor(decision?.carry ?? null, mediaSetor(tickerUp, empresa.setor, radarLinhas, (r) => r.carryReal));
+  const roicDfpValores = dfpAscendente.map((f) => (f.roic !== null ? Number(f.roic) : null)).filter((v): v is number => v !== null);
+  const roicAnterior = roicDfpValores.at(-2);
+  const roicVariacaoRelativa =
+    roicDfpValores.length >= 2 && roicAnterior !== undefined && roicAnterior !== 0
+      ? (roicDfpValores.at(-1)! - roicAnterior) / Math.abs(roicAnterior)
+      : null;
+  const coachInsight = decision
+    ? gerarCoachInsight({
+        carryReal: decision.carry,
+        carryComparacaoSetor,
+        roicAtual: radarPropria?.roic4 ?? null,
+        roicVariacaoRelativa,
+        earningsYield: radarPropria?.ey ?? null,
+        quality: decision.quality,
+        growth: decision.growth,
+        technical: decision.technical,
+      })
+    : null;
+  const thesisLessons = story ? gerarThesisLessons({ story, roicComparacaoSetor, carryComparacaoSetor }) : null;
+  const capsula =
+    story && decision
+      ? montarIntelligenceCapsule({
+          story,
+          fdie: decision.fdie,
+          urgencia: painelDecisao?.urgencia ?? "baixa",
+          motivoUrgencia: painelDecisao?.motivo ?? "Sem decisão prioritária classificável para esta empresa hoje.",
+        })
+      : null;
+
   return (
     <Shell ativo={`/tese/${tickerUp}`} titulo={`${tickerUp} — ${empresa.nome}`} subtitulo={empresa.setor ?? undefined} rolagem>
       {/* ================= HERO ================= */}
@@ -370,6 +414,28 @@ export default async function EmpresaPage({ params }: { params: Promise<{ ticker
             ) : (
               <p className="text-[12px] text-slate-500">Sem Decision Object calculável para {tickerUp} — fundamentos insuficientes.</p>
             )}
+          </Secao>
+
+          {/* ================= SEÇÃO 1.5 — Investment Coach (Bloco 2, Sprint 2.7) ================= */}
+          <Secao titulo="O que aprendemos com esta empresa?" subtitulo="Camada de ensino sobre o que o Foundation já calcula — nenhuma nota/motor novo.">
+            <div className="space-y-3">
+              <InvestmentCoach insight={coachInsight} />
+              {thesisLessons ? (
+                <div className="space-y-2.5 text-[12.5px] leading-relaxed text-slate-300">
+                  <p><span className="text-slate-500">Quais características fizeram esta empresa se tornar uma Compounder: </span>{thesisLessons.caracteristicasCompounder.join(" ")}</p>
+                  <p><span className="text-slate-500">Quais erros poderiam destruir esta tese: </span>{thesisLessons.errosQuePodemDestruir.join(" ")}</p>
+                  <p><span className="text-slate-500">O que diferencia esta empresa dos concorrentes: </span>{thesisLessons.diferencialConcorrentes}</p>
+                </div>
+              ) : (
+                <p className="text-[12px] text-slate-500">Sem Investment Story calculável para {tickerUp} ainda.</p>
+              )}
+              {capsula && (
+                <div>
+                  <p className="mb-1.5 text-[9px] uppercase tracking-wider text-slate-500">Intelligence Capsule</p>
+                  <IntelligenceCapsuleCard capsula={capsula} />
+                </div>
+              )}
+            </div>
           </Secao>
 
           {/* ================= SEÇÃO 2 — Thesis Status ================= */}

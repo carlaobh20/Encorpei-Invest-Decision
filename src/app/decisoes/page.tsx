@@ -30,6 +30,10 @@ import { montarActionTimeline, type EntradaBalanco, type EntradaNota, type Event
 import { gerarNarrativaIA } from "@/lib/decision-center-narrativa";
 import { PainelPorQue, PainelComoCalculamos } from "@/components/PorQueComoCalculamos";
 import { calcularWealthEngine } from "@/lib/wealth-engine";
+import { mediaSetor, compararComSetor } from "@/lib/dash-narrativa";
+import { gerarCoachInsight } from "@/lib/coach-insights";
+import { gerarDecisionLesson } from "@/lib/decision-lessons";
+import { InvestmentCoach } from "@/components/InvestmentCoach";
 
 export const dynamic = "force-dynamic";
 
@@ -344,6 +348,29 @@ export default async function DecisionCenter() {
   const horaSP = (new Date().getUTCHours() + 21) % 24;
   const saudacao = horaSP < 12 ? "Bom dia" : horaSP < 18 ? "Boa tarde" : "Boa noite";
 
+  // ---------- Investment Coach (Sprint 2.7) — no máximo UM insight por tela ----------
+  // Sinais tirados do ticker de maior prioridade hoje (ou a melhor oportunidade,
+  // se não houver decisão prioritária) — mesmos campos já calculados acima
+  // (Decision, radar). `roicVariacaoRelativa` fica null nesta tela: calcular
+  // tendência de ROIC exige histórico DFP por ticker, que só a tela Empresas
+  // já busca — o insight de "ROIC caiu" simplesmente não dispara aqui, nunca
+  // fabricado com meio dado.
+  const tickerCoach = decisoesPrioritarias[0]?.ticker ?? oportunidadesOrdenadas[0]?.ticker ?? null;
+  const decisionCoach = tickerCoach ? decisions.get(tickerCoach) ?? null : null;
+  const radarCoach = tickerCoach ? radarLinhas.find((r) => r.ticker === tickerCoach) ?? null : null;
+  const coachInsight = decisionCoach
+    ? gerarCoachInsight({
+        carryReal: decisionCoach.carry,
+        carryComparacaoSetor: compararComSetor(decisionCoach.carry, mediaSetor(tickerCoach!, setorPorTicker.get(tickerCoach!) ?? null, radarLinhas, (r) => r.carryReal)),
+        roicAtual: radarCoach?.roic4 ?? null,
+        roicVariacaoRelativa: null,
+        earningsYield: radarCoach?.ey ?? null,
+        quality: decisionCoach.quality,
+        growth: decisionCoach.growth,
+        technical: decisionCoach.technical,
+      })
+    : null;
+
   return (
     <Shell ativo="/decisoes" titulo="Decision Center" subtitulo="O que precisa da sua decisão hoje — nunca uma lista de indicadores." rolagem>
       {/* ================= HERO ================= */}
@@ -361,6 +388,9 @@ export default async function DecisionCenter() {
           <span><span className="font-mono font-semibold text-amber-300">{contagemSeveridade.critico + contagemSeveridade.importante}</span> alerta{contagemSeveridade.critico + contagemSeveridade.importante === 1 ? "" : "s"} (crítico + importante)</span>
         </div>
       </div>
+
+      {/* ================= Investment Coach (Bloco 2, Sprint 2.7) — no máximo 1 por tela ================= */}
+      <InvestmentCoach insight={coachInsight} />
 
       {/* ================= SEÇÃO 7 — Card IA (logo abaixo do Hero, é o resumo da tela) ================= */}
       <Secao titulo="O que merece minha atenção hoje?" subtitulo="Narrativa por template — 100% dado real, nunca um modelo de linguagem decidindo (sem chave de LLM configurada, ver decision-center-narrativa.ts).">
@@ -395,6 +425,15 @@ export default async function DecisionCenter() {
                     <Link href={`/tese/${d.ticker}`} className="text-[10.5px] text-sky-400 hover:underline">Analisar →</Link>
                   </div>
                   <PainelExplicabilidade decision={decision} perfilTese={d.ticker ? perfilTesePorTicker.get(d.ticker) ?? null : null} />
+                  {(() => {
+                    const licao = gerarDecisionLesson(d);
+                    return (
+                      <div className="mt-2 rounded-lg border border-white/5 bg-black/20 p-2.5 text-[10.5px] leading-relaxed text-slate-400">
+                        <p><span className="text-slate-600">Por que esta decisão apareceu: </span>{licao.porQueApareceu}</p>
+                        <p className="mt-1"><span className="text-slate-600">O que isso ensina: </span>{licao.conceito}</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
