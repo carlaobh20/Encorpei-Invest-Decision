@@ -28,6 +28,7 @@ import {
 import { montarThesisMonitor, ROTULO_TENDENCIA, type EntradaThesisMonitor } from "@/lib/thesis-monitor-dados";
 import { montarActionTimeline, type EntradaBalanco, type EntradaNota, type EventoExistente } from "@/lib/action-timeline-dados";
 import { gerarNarrativaIA } from "@/lib/decision-center-narrativa";
+import { PainelPorQue, PainelComoCalculamos } from "@/components/PorQueComoCalculamos";
 import { calcularWealthEngine } from "@/lib/wealth-engine";
 
 export const dynamic = "force-dynamic";
@@ -113,69 +114,58 @@ function Secao({
   );
 }
 
-/** Painel "Por que esta decisão?" — explainability, reaproveita 100% Decision.explanation/evidences/probability já calculados; nenhuma conta nova aqui. */
+/**
+ * Painel "Por quê? / Como calculamos?" — Sprint 2.5 (Simplicity Layer):
+ * mesmo dado 100% real de antes (Decision.explanation/evidences/
+ * probability/expectedReturn/warnings/fdie, nenhuma conta nova), agora
+ * organizado nos dois blocos que a spec pede, via componente reutilizável
+ * (src/components/PorQueComoCalculamos.tsx) — primeira tela a usar o
+ * toolkit do Simplicity Layer; as outras ficam para a Fase A2.
+ */
 function PainelExplicabilidade({ decision, perfilTese }: { decision: Decision; perfilTese: PerfilTese | null }) {
+  const dadosUtilizados = [
+    `Probabilidade histórica: ${decision.probability?.explicacao ?? "sem decisões registradas o suficiente no Diário para estimar."}`,
+    `Retorno esperado (12m): ${
+      decision.expectedReturn.valor !== null
+        ? `${pctSinal(decision.expectedReturn.valor)} (intervalo ${pct(decision.expectedReturn.intervaloInferior)} a ${pct(decision.expectedReturn.intervaloSuperior)})`
+        : decision.expectedReturn.motivo
+    }`,
+    ...decision.warnings,
+  ];
+  const motivosComTom = [
+    ...decision.explanation.motivosPositivos.map((m) => `[A favor] ${m.texto}`),
+    ...decision.explanation.motivosNegativos.map((m) => `[Contra] ${m.texto}`),
+  ];
+  const hipoteses =
+    perfilTese && perfilTese.premissas.length + perfilTese.hipoteses.length + perfilTese.riscos.length + perfilTese.catalisadores.length > 0
+      ? ["Ver estrutura completa da tese (Premissas/Hipóteses/Riscos/Catalisadores)."]
+      : [];
+  const limitacoes =
+    hipoteses.length === 0
+      ? ["Estrutura qualitativa da tese (migração 022) ainda não aplicada no banco — corte honesto, não escondido."]
+      : [];
+
   return (
-    <details className="mt-2 rounded-lg border border-white/5 bg-black/20 p-2.5 text-[11px]">
-      <summary className="cursor-pointer select-none font-semibold text-sky-400/90">Por que esta decisão?</summary>
-      <div className="mt-2 space-y-2.5 text-slate-300">
-        {decision.explanation.motivosPositivos.length > 0 && (
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-emerald-400/80">A favor</p>
-            <ul className="mt-1 space-y-0.5">
-              {decision.explanation.motivosPositivos.map((m, i) => <li key={i}>· {m.texto}</li>)}
-            </ul>
-          </div>
-        )}
-        {decision.explanation.motivosNegativos.length > 0 && (
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-red-400/80">Contra</p>
-            <ul className="mt-1 space-y-0.5">
-              {decision.explanation.motivosNegativos.map((m, i) => <li key={i}>· {m.texto}</li>)}
-            </ul>
-          </div>
-        )}
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-slate-500">Probabilidade histórica</p>
-          <p className="mt-1">{decision.probability?.explicacao ?? "Sem decisões registradas o suficiente no Diário para estimar."}</p>
-        </div>
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-slate-500">Retorno esperado (12m)</p>
-          <p className="mt-1">
-            {decision.expectedReturn.valor !== null
-              ? `${pctSinal(decision.expectedReturn.valor)} (intervalo ${pct(decision.expectedReturn.intervaloInferior)} a ${pct(decision.expectedReturn.intervaloSuperior)})`
-              : decision.expectedReturn.motivo}
-          </p>
-        </div>
-        {decision.evidences.length > 0 && (
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-slate-500">Evidências ativas</p>
-            <ul className="mt-1 space-y-0.5">
-              {decision.evidences.map((e, i) => <li key={i}>· {e.descricao} <span className="text-slate-600">({e.origem})</span></li>)}
-            </ul>
-          </div>
-        )}
-        <div>
-          <p className="text-[9px] uppercase tracking-wider text-slate-500">Premissas / hipóteses / riscos / catalisadores</p>
-          <p className="mt-1 text-slate-500">
-            {perfilTese && (perfilTese.premissas.length + perfilTese.hipoteses.length + perfilTese.riscos.length + perfilTese.catalisadores.length) > 0
-              ? "Ver estrutura completa da tese."
-              : "Estrutura qualitativa da tese (tese_estrutura, migração 022) ainda não aplicada no banco — corte honesto, não escondido."}
-          </p>
-        </div>
-        {decision.warnings.length > 0 && (
-          <div>
-            <p className="text-[9px] uppercase tracking-wider text-amber-500/80">Avisos / dados utilizados</p>
-            <ul className="mt-1 space-y-0.5 text-slate-500">
-              {decision.warnings.map((w, i) => <li key={i}>· {w}</li>)}
-            </ul>
-          </div>
-        )}
-        <p className="text-[9.5px] text-slate-700">
-          FDIE: {decision.fdie.ok} ok / {decision.fdie.alerta} alerta / {decision.fdie.critico} crítico · gerado em {fmtHora(decision.generatedAt)}
-        </p>
-      </div>
-    </details>
+    <>
+      <PainelPorQue
+        conteudo={{
+          dadosUtilizados,
+          motoresEnvolvidos: [...motivosComTom, `Explanation Engine`, `Probability Engine`],
+          evidencias: decision.evidences.map((e) => ({ descricao: e.descricao, origem: e.origem })),
+          hipoteses,
+          limitacoes,
+        }}
+      />
+      <PainelComoCalculamos
+        conteudo={{
+          formula: "Confluence v2 = Quality 25% + Carry 20% + Technical 20% + Growth 15% + Macro 10% + Consensus 5% + Management 3% + Portfolio 2% (peso renormalizado entre os componentes disponíveis).",
+          origem: `Decision Object (Foundation v3.1/v4) — FDIE: ${decision.fdie.ok} ok / ${decision.fdie.alerta} alerta / ${decision.fdie.critico} crítico.`,
+          versao: decision.confluence !== null ? `Confluence ${decision.confluence}, convicção ${decision.conviccao}` : null,
+          data: fmtHora(decision.generatedAt),
+          linhaCvm: null,
+        }}
+      />
+    </>
   );
 }
 
