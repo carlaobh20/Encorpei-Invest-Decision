@@ -56,6 +56,7 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
     links: [
       ["/algoritmo", "Algoritmo"],
       ["/auditoria", "Auditoria"],
+      ["/auditoria/memoria", "Memory Layer"],
     ],
   },
 ];
