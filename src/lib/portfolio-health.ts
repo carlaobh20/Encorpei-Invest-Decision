@@ -60,7 +60,8 @@ function rotularConcentracao(hhi: number): ConcentracaoRotulo {
   return "muito_alta";
 }
 
-function mediaPonderada(itens: { peso: number; valor: number | null }[]): { valor: number | null; n: number } {
+/** Exportado (Sprint 2.8) para reuso em src/app/page.tsx — Quality/Portfolio Fit/Drawdown médios do Wealth Health usam a mesma régua de cobertura honesta. */
+export function mediaPonderada(itens: { peso: number; valor: number | null }[]): { valor: number | null; n: number } {
   const disponiveis = itens.filter((i) => i.valor !== null) as { peso: number; valor: number }[];
   if (disponiveis.length === 0) return { valor: null, n: 0 };
   const pesoTotal = disponiveis.reduce((a, i) => a + i.peso, 0);

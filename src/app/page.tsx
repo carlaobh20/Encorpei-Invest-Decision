@@ -34,6 +34,18 @@ import { gerarDecisionFeed, ROTULO_SUGESTAO, type DecisionFeedEntrada, type Suge
 import type { Conviccao } from "@/lib/confluencia";
 import { ROTULO_SENSIBILIDADE } from "@/lib/compounder/sensibilidade-juros";
 import { corHeatmapRetorno } from "@/lib/heatmap";
+import { mediaPonderada, calcularSaudeCarteira, montarLinhasSaude } from "@/lib/portfolio-health";
+import { montarWealthHealth, ROTULO_BANDA_WEALTH_HEALTH, type WealthHealth } from "@/lib/wealth-health";
+import { montarPortfolioAttribution } from "@/lib/portfolio-attribution";
+import { identificarAmeacasCarteira } from "@/lib/portfolio-risk";
+import { gerarAprendizadosCarteira } from "@/lib/portfolio-lessons";
+import { bucketizarQuickActions, ROTULO_BALDE } from "@/lib/quick-actions";
+import { montarDecisoesPrioritarias } from "@/lib/decisoes-prioritarias";
+import { montarIntelligenceCapsulePatrimonio } from "@/lib/wealth-intelligence-capsule";
+import { calcularWealthEngine } from "@/lib/wealth-engine";
+import { gerarCoachInsight } from "@/lib/coach-insights";
+import { InvestmentCoach } from "@/components/InvestmentCoach";
+import { IntelligenceCapsuleCard } from "@/components/IntelligenceCapsuleCard";
 
 export const dynamic = "force-dynamic";
 
@@ -191,12 +203,15 @@ function MiniStat({
 
 /** Painel compacto genérico — cabeçalho pequeno + link opcional, usado nas Linhas 2/3/4. */
 function Bloco({
-  titulo, acao, children, className = "",
-}: { titulo: string; acao?: { href: string; rotulo: string }; children: React.ReactNode; className?: string }) {
+  titulo, subtitulo, acao, children, className = "",
+}: { titulo: string; subtitulo?: string; acao?: { href: string; rotulo: string }; children: React.ReactNode; className?: string }) {
   return (
     <section className={`flex flex-col rounded-[16px] border border-white/[0.06] bg-white/[0.03] p-3.5 ${className}`}>
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">{titulo}</h2>
+        <div>
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400">{titulo}</h2>
+          {subtitulo && <p className="mt-0.5 text-[10px] text-slate-500">{subtitulo}</p>}
+        </div>
         {acao && (
           <Link href={acao.href} className="shrink-0 text-[10.5px] text-sky-400 hover:underline">
             {acao.rotulo} →
@@ -328,12 +343,31 @@ export default async function DecisionCenter() {
   // Método e limitações documentados em src/lib/patrimonio.ts.
   const patrimonio = await calcularPatrimonio(supabase);
 
+  // ---------- Goal Engine (Seção 2, Sprint 2.8) ----------
+  // `patrimonioObjetivo` fica SEMPRE null nesta versão — não existe hoje
+  // nenhum lugar (tabela/form) onde o Carlos possa registrar uma meta
+  // patrimonial. Escrever uma migração nova pra isso, com 3 migrações
+  // (022/023) já travadas pelo mesmo bloqueio de conector Supabase, seria
+  // empilhar mais um item sem forma de testar — decisão registrada no
+  // roadmap para o Carlos ratificar, não fabricada silenciosamente.
+  // CAGR histórico/CAGR real acima da inflação (que NÃO dependem de meta)
+  // aparecem reais; tempo estimado/gap ficam "Em desenvolvimento".
+  const wealthEngineResultado = patrimonio ? calcularWealthEngine({ patrimonio: patrimonio.resultado, patrimonioObjetivo: null }) : null;
+
   // ---------- Decision Object (Foundation v4, Opção A — só esta tela) ----------
   let decisionFeed: ReturnType<typeof gerarDecisionFeed> = [];
   let decisions = new Map<string, Decision>();
   let portfolioFitPorTicker = new Map<string, ResultadoPortfolioFit>();
   let statusTesesPorTicker = new Map<string, PerfilTese>();
   let saudeV2: SaudeCarteiraV2 | null = null;
+  // ---------- Wealth Operating System (Bloco 2, Sprint 2.8) ----------
+  let wealthHealth: WealthHealth | null = null;
+  let ameacasCarteira: ReturnType<typeof identificarAmeacasCarteira> = [];
+  let attribution: ReturnType<typeof montarPortfolioAttribution> | null = null;
+  let aprendizadosCarteira: ReturnType<typeof gerarAprendizadosCarteira> = [];
+  let wealthCoachInsight: ReturnType<typeof gerarCoachInsight> = null;
+  let quickActions: ReturnType<typeof bucketizarQuickActions> = { hoje: [], esta_semana: [], este_mes: [] };
+  const fdieAgregadoCarteira = { ok: 0, alerta: 0, critico: 0, total: 0 };
 
   if (carteira && carteira.linhas.length > 0) {
     const [technicalLinhas, compounderLinhas] = await Promise.all([
@@ -368,6 +402,87 @@ export default async function DecisionCenter() {
     statusTesesPorTicker = await montarStatusTeses(supabase, carteira.linhas.map((l) => l.ticker), decisions, geradoEm);
 
     saudeV2 = montarSaudeCarteiraV2(carteira.linhas, radarLinhas, compounderLinhas, decisions, fitResultado.volumeMedioReaisPorTicker);
+
+    // ---------- Wealth Health (Seção 1) + Attribution (Seção 4) + Risco (Seção 5) + Aprendizados (Seção 8) ----------
+    // Nenhum motor novo — só composição sobre saudeV2/decisions/portfolioFitPorTicker já calculados acima.
+    const linhasComPeso = carteira.linhas.filter((l): l is typeof l & { peso: number } => l.peso !== null);
+
+    const qualityMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: decisions.get(l.ticker)?.quality ?? null })));
+    const fitMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: portfolioFitPorTicker.get(l.ticker)?.scoreEncaixe ?? null })));
+    const drawdownMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: decisions.get(l.ticker)?.expectedDrawdown.valor ?? null })));
+
+    wealthHealth = montarWealthHealth({
+      confluenceMedio: saudeV2.confluenceV2.valor,
+      carryMedioPonderado: saudeV2.saude.carryMedioPonderado,
+      concentracaoRotulo: saudeV2.saude.concentracaoRotulo,
+      liquidezRotulo: saudeV2.liquidez.rotulo,
+      qualityMedioPonderado: qualityMedio.valor,
+      portfolioFitMedioPonderado: fitMedio.valor,
+      drawdownEsperadoMedioPonderado: drawdownMedio.valor,
+    });
+
+    for (const l of linhasComPeso) {
+      const d = decisions.get(l.ticker);
+      if (d) {
+        fdieAgregadoCarteira.ok += d.fdie.ok;
+        fdieAgregadoCarteira.alerta += d.fdie.alerta;
+        fdieAgregadoCarteira.critico += d.fdie.critico;
+        fdieAgregadoCarteira.total += d.fdie.total;
+      }
+    }
+
+    ameacasCarteira = identificarAmeacasCarteira({
+      concentracaoRotulo: saudeV2.saude.concentracaoRotulo,
+      maiorPosicao: saudeV2.saude.maiorPosicao,
+      carryMedioPonderado: saudeV2.saude.carryMedioPonderado,
+      qualitiesPonderadas: linhasComPeso.map((l) => ({ ticker: l.ticker, peso: l.peso, quality: decisions.get(l.ticker)?.quality ?? null })),
+      liquidezRotulo: saudeV2.liquidez.rotulo,
+      posicoesComFdieCritico: linhasComPeso.filter((l) => (decisions.get(l.ticker)?.fdie.critico ?? 0) > 0).map((l) => l.ticker),
+      totalPosicoes: linhasComPeso.length,
+    });
+
+    attribution = montarPortfolioAttribution(
+      linhasComPeso.map((l) => ({ ticker: l.ticker, peso: l.peso, resultadoPct: l.resultadoPct, carryReal: decisions.get(l.ticker)?.carry ?? null }))
+    );
+
+    // Aprendizados da Carteira: compara Saúde ANTES/DEPOIS da posição mais recente por `data_compra` real (migração 016).
+    const linhasComData = linhasComPeso.filter((l) => l.dataCompra !== null);
+    if (linhasComData.length > 0) {
+      const maisRecente = [...linhasComData].sort((a, b) => (b.dataCompra as string).localeCompare(a.dataCompra as string))[0];
+      const linhasAntes = carteira.linhas.filter((l) => l.ticker !== maisRecente.ticker);
+      if (linhasAntes.length > 0) {
+        const linhasSaudeAntes = montarLinhasSaude(linhasAntes, radarLinhas, compounderLinhas).map((l) => ({ ...l, carryReal: decisions.get(l.ticker)?.carry ?? null }));
+        const saudeAntes = calcularSaudeCarteira(linhasSaudeAntes);
+        const qualityAntes = mediaPonderada(
+          linhasAntes.filter((l): l is typeof l & { peso: number } => l.peso !== null).map((l) => ({ peso: l.peso, valor: decisions.get(l.ticker)?.quality ?? null }))
+        );
+        aprendizadosCarteira = gerarAprendizadosCarteira(
+          { concentracaoRotulo: saudeAntes.concentracaoRotulo, carryMedioPonderado: saudeAntes.carryMedioPonderado, qualityMedioPonderado: qualityAntes.valor, alocacaoPorModelo: saudeAntes.alocacaoPorModelo },
+          { concentracaoRotulo: saudeV2.saude.concentracaoRotulo, carryMedioPonderado: saudeV2.saude.carryMedioPonderado, qualityMedioPonderado: qualityMedio.valor, alocacaoPorModelo: saudeV2.saude.alocacaoPorModelo },
+          maisRecente.ticker
+        );
+      }
+    }
+
+    // Wealth Coach (Seção 8): 1 Coach Insight pro Meu Dash inteiro, tirado da maior posição — mesmo padrão do Decision Center (Sprint 2.7).
+    if (saudeV2.saude.maiorPosicao) {
+      const tickerMaior = saudeV2.saude.maiorPosicao.ticker;
+      const dMaior = decisions.get(tickerMaior);
+      const rMaior = radarLinhas.find((r) => r.ticker === tickerMaior) ?? null;
+      if (dMaior) {
+        const linhasSetorLocal = Array.from(decisions.values()).map((d) => ({ ticker: d.ticker, setor: d.setor }));
+        wealthCoachInsight = gerarCoachInsight({
+          carryReal: dMaior.carry,
+          carryComparacaoSetor: compararComSetor(dMaior.carry, mediaSetor(tickerMaior, dMaior.setor, linhasSetorLocal, (l) => decisions.get(l.ticker)?.carry ?? null)),
+          roicAtual: rMaior?.roic4 ?? null,
+          roicVariacaoRelativa: null,
+          earningsYield: rMaior?.ey ?? null,
+          quality: dMaior.quality,
+          growth: dMaior.growth,
+          technical: dMaior.technical,
+        });
+      }
+    }
 
     const entradasFeed: DecisionFeedEntrada[] = carteira.linhas.map((l) => {
       const tec = technicalResultadoPorTicker.get(l.ticker);
@@ -430,6 +545,53 @@ export default async function DecisionCenter() {
   });
   const alertasOrdenados = ordenarPorSeveridade(alertasClassificados);
   const contagemSeveridade = contarPorSeveridade(alertasClassificados);
+
+  // ---------- Quick Actions (Seção 11, Sprint 2.8) ----------
+  // "Nenhuma lógica duplicada... tudo vindo do Decision Center" — reusa
+  // EXATAMENTE `montarDecisoesPrioritarias`/`classificarUrgencia`
+  // (decisoes-prioritarias.ts), mesma função que a tela /decisoes chama.
+  if (carteira && carteira.linhas.length > 0) {
+    const severidadesPorTicker = new Map<string, SeveridadeAlerta[]>();
+    for (const a of alertasClassificados) {
+      const ticker = a.evento.teses?.ticker;
+      if (!ticker) continue;
+      const arr = severidadesPorTicker.get(ticker) ?? [];
+      arr.push(a.severidade);
+      severidadesPorTicker.set(ticker, arr);
+    }
+    const entradasPrioritariasDash = carteira.linhas
+      .map((l) => {
+        const decision = decisions.get(l.ticker);
+        if (!decision) return null;
+        return {
+          ticker: l.ticker,
+          empresa: l.ticker,
+          decision,
+          perfilTese: statusTesesPorTicker.get(l.ticker) ?? null,
+          severidadesRecentes: severidadesPorTicker.get(l.ticker) ?? [],
+        };
+      })
+      .filter((e): e is NonNullable<typeof e> => e !== null);
+    quickActions = bucketizarQuickActions(montarDecisoesPrioritarias(entradasPrioritariasDash, 10));
+  }
+
+  // ---------- Intelligence Capsule do Patrimônio (Seção 9, Sprint 2.8) ----------
+  const tesesQuebradasDash = [...statusTesesPorTicker.values()].filter(
+    (p) => p.thesisStatus === "quebrada" || p.thesisStatus === "invalida"
+  ).length;
+  const gapMetaTexto =
+    wealthEngineResultado && wealthEngineResultado.cagrRealAcimaInflacao !== null
+      ? `CAGR real acima da inflação: ${pctSinal(wealthEngineResultado.cagrRealAcimaInflacao)} — sem meta patrimonial configurada ainda pra calcular o gap até um objetivo.`
+      : null;
+  const wealthCapsule = wealthHealth
+    ? montarIntelligenceCapsulePatrimonio({
+        wealthHealth,
+        tesesQuebradas: tesesQuebradasDash,
+        totalTeses: statusTesesPorTicker.size,
+        fdie: fdieAgregadoCarteira,
+        gapMetaTexto,
+      })
+    : null;
 
   const porData = new Map<string, number[]>();
   for (const s of (scoresRaw as unknown as ScoreRow[]) ?? []) {
@@ -517,7 +679,50 @@ export default async function DecisionCenter() {
         {fraseDestaqueCarry && (
           <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-500">{fraseDestaqueCarry}</p>
         )}
+
+        {/* ================= SEÇÃO 1 — WEALTH HEALTH (Sprint 2.8) ================= */}
+        {wealthHealth && (
+          <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-white/[0.06] pt-3">
+            <div>
+              <p className="text-[9px] uppercase tracking-wider text-slate-500">Saúde Patrimonial</p>
+              <div className="mt-0.5 flex items-baseline gap-2">
+                <span className="font-mono text-[24px] font-bold text-slate-50">{wealthHealth.score ?? "—"}</span>
+                <span className="text-[12px] font-semibold text-slate-300">{ROTULO_BANDA_WEALTH_HEALTH[wealthHealth.banda]}</span>
+              </div>
+            </div>
+            <div className="flex flex-1 flex-wrap gap-x-4 gap-y-1">
+              {wealthHealth.componentes.map((c) => (
+                <span key={c.chave} className="text-[9.5px] text-slate-500" title={`Peso ${c.peso} — ${c.disponivel ? "disponível" : "sem dado hoje"}`}>
+                  {c.rotulo}: <span className={c.disponivel ? "font-mono text-slate-300" : "font-mono text-slate-700"}>{c.disponivel ? Math.round(c.pontos as number) : "—"}</span>
+                </span>
+              ))}
+            </div>
+            {/* ================= SEÇÃO 10 — TRUST LAYER (discreto, ao lado) ================= */}
+            <span
+              className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1 text-[9.5px] text-slate-400"
+              title={`FDIE: ${fdieAgregadoCarteira.ok} ok, ${fdieAgregadoCarteira.alerta} alerta, ${fdieAgregadoCarteira.critico} crítico de ${fdieAgregadoCarteira.total} verificações`}
+            >
+              {fdieAgregadoCarteira.total === 0
+                ? "Sem verificação hoje"
+                : fdieAgregadoCarteira.critico > 0
+                ? "★★☆☆☆ Auditado — crítico encontrado"
+                : fdieAgregadoCarteira.alerta > 0
+                ? "★★★☆☆ Auditado — com alerta"
+                : "★★★★★ Auditado"}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* ================= SEÇÃO 9 — INTELLIGENCE CAPSULE DO PATRIMÔNIO (Sprint 2.8) ================= */}
+      {wealthCapsule && (
+        <Bloco titulo="Cápsula do Patrimônio">
+          <IntelligenceCapsuleCard capsula={wealthCapsule} />
+        </Bloco>
+      )}
+
+      {/* ================= SEÇÃO 8 — WEALTH COACH (Sprint 2.8) ================= */}
+      <InvestmentCoach insight={wealthCoachInsight} />
 
       {/* ================= BARRA SUPERIOR — 10 cards compactos, ≤90px ================= */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-10">
@@ -1109,6 +1314,127 @@ export default async function DecisionCenter() {
             </tbody>
           </table>
         </div>
+      </Bloco>
+
+      {/* ================= SEÇÃO 2 — GOAL ENGINE (Sprint 2.8) ================= */}
+      <Bloco titulo="Goal Engine">
+        {wealthEngineResultado ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatMini rotulo="Meta patrimonial" valor="Em desenvolvimento" titulo="Ainda não existe onde registrar uma meta patrimonial no sistema — não fabricado. Ver roadmap." />
+            <StatMini rotulo="Prazo" valor="Em desenvolvimento" titulo="Depende da meta patrimonial acima." />
+            <StatMini
+              rotulo="CAGR histórico"
+              valor={wealthEngineResultado.cagr !== null ? pctSinal(wealthEngineResultado.cagr) : "—"}
+              titulo={wealthEngineResultado.motivoSemCagr ?? "CAGR anualizado da carteira real, wealth-engine.ts"}
+            />
+            <StatMini
+              rotulo="CAGR real acima do IPCA"
+              valor={wealthEngineResultado.cagrRealAcimaInflacao !== null ? pctSinal(wealthEngineResultado.cagrRealAcimaInflacao) : "—"}
+              titulo="Anualização do retorno acima da inflação"
+            />
+            <StatMini rotulo="Probabilidade de atingir a meta" valor="—" titulo={wealthEngineResultado.motivoSemProbabilidade} />
+            <StatMini rotulo="Gap até a meta" valor="Em desenvolvimento" titulo="Depende da meta patrimonial acima." />
+          </div>
+        ) : (
+          <p className="text-[12px] text-slate-500">Sem série de patrimônio suficiente ainda para o Wealth Engine.</p>
+        )}
+        <p className="mt-2 text-[9.5px] text-slate-700">
+          Estrutura pronta (CAGR/tempo-até-meta/gap já existem em wealth-engine.ts) — só falta um lugar pra você
+          registrar a meta patrimonial. Decisão registrada no roadmap: exige migração nova, represada atrás das
+          migrações 022/023 (mesmo bloqueio de conector Supabase).
+        </p>
+      </Bloco>
+
+      {/* ================= SEÇÃO 4 — PERFORMANCE ATTRIBUTION (Sprint 2.8) ================= */}
+      {attribution && attribution.posicoes.length > 0 && (
+        <Bloco titulo="Performance Attribution" acao={carteira ? { href: "/carteira", rotulo: "carteira completa" } : undefined}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-left text-[9px] uppercase tracking-wider text-slate-500">
+                  <th className="pb-1.5 pr-2">Empresa</th>
+                  <th className="pb-1.5 pr-2 text-right">Peso</th>
+                  <th className="pb-1.5 pr-2 text-right">Contrib. Retorno</th>
+                  <th className="pb-1.5 pr-2 text-right">Contrib. Carry (proteção inflação)</th>
+                  <th className="pb-1.5 text-right">Impacto na Concentração</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...attribution.posicoes].sort((a, b) => b.peso - a.peso).map((p) => (
+                  <tr key={p.ticker} className="border-t border-white/5">
+                    <td className="py-1.5 pr-2">
+                      <Link href={`/tese/${p.ticker}`} className="font-mono text-slate-200 hover:underline">{p.ticker}</Link>
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-mono text-slate-400">{(p.peso * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                    <td className={`py-1.5 pr-2 text-right font-mono ${p.contribuicaoRetorno === null ? "text-slate-700" : p.contribuicaoRetorno >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {p.contribuicaoRetorno !== null ? pctSinal(p.contribuicaoRetorno) : "—"}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
+                      {p.contribuicaoCarry !== null ? pctSinal(p.contribuicaoCarry) : "—"}
+                    </td>
+                    <td className={`py-1.5 text-right font-mono ${p.impactoConcentracao >= 0 ? "text-amber-300" : "text-emerald-400"}`}>
+                      {p.impactoConcentracao >= 0 ? "+" : ""}{(p.impactoConcentracao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}pp
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-[9.5px] text-slate-700">{attribution.avisoVolatilidade}</p>
+        </Bloco>
+      )}
+
+      {/* ================= SEÇÃO 5 — RISCO DA CARTEIRA (Sprint 2.8) ================= */}
+      <Bloco titulo="Risco da Carteira" subtitulo="O que hoje ameaça meu patrimônio?">
+        {ameacasCarteira.length === 0 ? (
+          <p className="text-[12px] text-slate-500">Nenhuma ameaça identificada hoje pelos sinais que o sistema já calcula.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {ameacasCarteira.map((a) => (
+              <div key={a.chave} className={`rounded-lg border px-2.5 py-1.5 text-[11px] leading-snug ${a.severidade === "alta" ? "border-red-500/30 bg-red-500/10 text-red-200" : "border-amber-500/30 bg-amber-500/10 text-amber-200"}`}>
+                <span className="font-semibold">{a.titulo}: </span>{a.texto}
+              </div>
+            ))}
+          </div>
+        )}
+      </Bloco>
+
+      {/* ================= SEÇÃO 8 (continuação) — APRENDIZADOS DA CARTEIRA (Sprint 2.8) ================= */}
+      {aprendizadosCarteira.length > 0 && (
+        <Bloco titulo="Aprendizados da Carteira">
+          <div className="space-y-1.5">
+            {aprendizadosCarteira.map((l, i) => (
+              <p key={i} className="text-[11.5px] leading-relaxed text-slate-300">· {l.texto}</p>
+            ))}
+          </div>
+        </Bloco>
+      )}
+
+      {/* ================= SEÇÃO 11 — QUICK ACTIONS (Sprint 2.8) ================= */}
+      <Bloco titulo="Quick Actions" subtitulo="Vem do Decision Center — nunca recalculado aqui.">
+        {quickActions.hoje.length + quickActions.esta_semana.length + quickActions.este_mes.length === 0 ? (
+          <p className="text-[12px] text-slate-500">Nenhuma ação pendente hoje.</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {(["hoje", "esta_semana", "este_mes"] as const).map((balde) => (
+              <div key={balde}>
+                <p className="mb-1.5 text-[9px] uppercase tracking-wider text-slate-500">{ROTULO_BALDE[balde]}</p>
+                {quickActions[balde].length === 0 ? (
+                  <p className="text-[10.5px] text-slate-600">—</p>
+                ) : (
+                  <div className="space-y-1">
+                    {quickActions[balde].map((d) => (
+                      <Link key={d.ticker} href={`/tese/${d.ticker}`} className="block rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1 text-[10.5px] hover:bg-white/[0.04]">
+                        <span className="font-mono font-semibold text-slate-200">{d.ticker}</span>{" "}
+                        <span className="text-slate-400">{d.titulo}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </Bloco>
     </Shell>
   );

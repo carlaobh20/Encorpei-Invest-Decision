@@ -40,7 +40,8 @@ export type EntradaIntelligenceCapsule = {
   motivoUrgencia: string;
 };
 
-function nivelConfiancaDoFdie(fdie: EntradaIntelligenceCapsule["fdie"]): NivelConfianca {
+/** Exportado para reuso por wealth-intelligence-capsule.ts (Sprint 2.8) — mesma régua, nível de carteira em vez de nível de empresa. */
+export function nivelConfiancaDoFdie(fdie: { ok: number; alerta: number; critico: number; total: number }): NivelConfianca {
   if (fdie.total === 0) return "indisponivel";
   if (fdie.critico > 0) return "baixa";
   if (fdie.alerta > 0) return "media";
