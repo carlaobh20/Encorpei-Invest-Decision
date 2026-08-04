@@ -22,7 +22,24 @@ import { createHash } from "node:crypto";
  * `new Date()` interno) — mantém testável e reproduzível.
  */
 
-export type ConfiabilidadeProveniencia = "alta" | "media" | "baixa";
+/**
+ * Nível de confiança 3-graus — o MESMO padrão ("alta"|"media"|"baixa") já usado
+ * em ~11 arquivos do domínio (radar.ts, score.ts, carry/types.ts, compounder/*,
+ * technical/*, decision-dna.ts). Achado da auditoria do Foundation v3.1
+ * (Módulo 8): não valeu a pena migrar os 11 arquivos existentes para este tipo
+ * (mudança ampla, fora do escopo incremental deste sprint — risco não
+ * justificado). A partir daqui, porém, todo módulo NOVO reusa este tipo em vez
+ * de declarar mais uma cópia da mesma união de 3 strings.
+ */
+export type NivelConfianca = "alta" | "media" | "baixa";
+
+/** @deprecated use NivelConfianca — mantido por compatibilidade com o Bloco 1 */
+export type ConfiabilidadeProveniencia = NivelConfianca;
+
+/** SHA-256 (hex) de um payload qualquer, serializado como JSON. Reaproveitado pelo Evidence Engine — mesmo hash, um lugar só. */
+export function hashPayload(payload: unknown): string {
+  return createHash("sha256").update(JSON.stringify(payload ?? null)).digest("hex");
+}
 
 export type EntradaProveniencia = {
   /** ex.: "CVM (ITR)", "CVM (DFP)", "brapi" */
@@ -57,7 +74,7 @@ const MOTIVO_AUSENCIA_LINHA_PAGINA =
   "Não aplicável: este dado vem da API estruturada (XBRL/JSON) da CVM ou da brapi, nunca de leitura de PDF — não existe número de linha/página para citar. Ver src/lib/auditoria.ts e roadmap/fdie-fase1.md.";
 
 export function montarProveniencia(entrada: EntradaProveniencia, timestamp: string): Proveniencia {
-  const hash = createHash("sha256").update(JSON.stringify(entrada.payload ?? null)).digest("hex");
+  const hash = hashPayload(entrada.payload);
   return {
     fonte: entrada.fonte,
     documento: entrada.documento,
