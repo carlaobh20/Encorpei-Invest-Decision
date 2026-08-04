@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { montarThesisMonitor } from "./thesis-monitor-dados";
+import { montarThesisMonitor, classificarTendenciaNota } from "./thesis-monitor-dados";
 
 describe("montarThesisMonitor", () => {
   it("inclui ticker cuja nota subiu acima do limiar", () => {
@@ -30,5 +30,21 @@ describe("montarThesisMonitor", () => {
       { ticker: "B", empresa: "B", notaAnterior: 50, notaAtual: 70 },
     ]);
     expect(r.map((l) => l.ticker)).toEqual(["B", "A"]);
+  });
+});
+
+describe("classificarTendenciaNota", () => {
+  it("diferente de montarThesisMonitor, SEMPRE retorna algo — 'estavel' também é resposta válida", () => {
+    expect(classificarTendenciaNota(70, 71)).toBe("estavel");
+  });
+
+  it("subindo/descendo acima do limiar", () => {
+    expect(classificarTendenciaNota(60, 70)).toBe("subindo");
+    expect(classificarTendenciaNota(70, 60)).toBe("descendo");
+  });
+
+  it("null quando falta um dos dois pontos — nunca inventa tendência", () => {
+    expect(classificarTendenciaNota(null, 70)).toBeNull();
+    expect(classificarTendenciaNota(70, null)).toBeNull();
   });
 });

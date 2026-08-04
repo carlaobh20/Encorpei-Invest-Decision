@@ -132,7 +132,8 @@ function acaoPorUrgencia(urgencia: UrgenciaDecisao, thesisStatus: StatusDerivado
   return "Acompanhar";
 }
 
-function impactoEsperadoTexto(decision: Decision): string {
+/** Exportado para reuso pelo Decision Panel de Empresas (Sprint 2.2) — mesmo texto, um único lugar que decide como formatar impacto esperado. */
+export function impactoEsperadoTexto(decision: Decision): string {
   if (decision.expectedReturn.valor !== null) {
     return `Retorno esperado (12m, Probability V2): ${(decision.expectedReturn.valor * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%.`;
   }
