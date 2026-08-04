@@ -15,6 +15,15 @@ import type { PontoPatrimonio } from "@/lib/patrimonio";
  * simplesmente não desenha linha para ela nesse trecho — nunca interpola
  * um valor que o motor não calculou.
  *
+ * Eixo Y = rentabilidade acumulada DESDE O INÍCIO DO PERÍODO VISÍVEL, não
+ * valor absoluto em R$ (04/08/2026: Carlos pegou a Carteira mostrando
+ * +6,7% no 1M mas desenhada ABAIXO do CDI +1,1% — os dois simulam o mesmo
+ * capital aportado, então em R$ absoluto a Carteira pode estar "atrás" do
+ * CDI olhando desde sempre, mesmo tendo subido mais SÓ no último mês. Cada
+ * linha agora reparte do zero no primeiro ponto visível do período
+ * escolhido (mesma conta de `rentAcumulada`, reusada pra desenhar a linha
+ * também) — a posição vertical passa a bater com o rótulo de % embaixo.
+ *
  * Aspect ratio do viewBox (reconstrução "terminal financeiro", 03/08/2026):
  * o card do gráfico na home agora tem ~280-320px de altura total (era
  * livre antes) — como o SVG escala por `viewBox` num `<div>` com `w-full`,
@@ -83,21 +92,38 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
 
   const n = filtrados.length;
 
+  // Rentabilidade acumulada de uma série DESDE O PRIMEIRO PONTO VISÍVEL do
+  // período filtrado — base é o primeiro valor não-nulo dentro de
+  // `filtrados` (não necessariamente o índice 0: uma série com histórico
+  // mais curto, ex. Ibovespa, começa de onde ela de fato tem dado real).
+  // Usada tanto pro rótulo de % quanto pra posição Y da linha no gráfico —
+  // uma única conta, nunca duas contas que podem divergir.
+  function rentAcumulada(chave: Serie, ateIdx: number): number | null {
+    if (ateIdx < 0 || ateIdx >= filtrados.length) return null;
+    const primeiro = filtrados.find((p) => p[chave] !== null);
+    if (!primeiro) return null;
+    const base = primeiro[chave] as number;
+    const atual = filtrados[ateIdx][chave];
+    if (atual === null || base <= 0) return null;
+    return atual / base - 1;
+  }
+
   const { min, max } = useMemo(() => {
     let mn = Infinity;
     let mx = -Infinity;
-    for (const p of filtrados) {
+    filtrados.forEach((_, i) => {
       for (const s of SERIES) {
-        const v = p[s.chave];
+        const v = rentAcumulada(s.chave, i);
         if (v !== null) {
           if (v < mn) mn = v;
           if (v > mx) mx = v;
         }
       }
-    }
+    });
     if (!Number.isFinite(mn) || !Number.isFinite(mx)) return { min: 0, max: 1 };
     if (mn === mx) return { min: mn - 1, max: mx + 1 };
     return { min: mn, max: mx };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtrados]);
 
   const xAt = (i: number) => (n <= 1 ? PADX : PADX + (i * (W - 2 * PADX)) / (n - 1));
@@ -106,8 +132,8 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
   function pathFor(chave: Serie): string {
     let d = "";
     let iniciado = false;
-    filtrados.forEach((p, i) => {
-      const v = p[chave];
+    filtrados.forEach((_, i) => {
+      const v = rentAcumulada(chave, i);
       if (v === null) {
         iniciado = false;
         return;
@@ -118,16 +144,6 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
       iniciado = true;
     });
     return d.trim();
-  }
-
-  function rentAcumulada(chave: Serie, ateIdx: number): number | null {
-    if (ateIdx < 0 || ateIdx >= filtrados.length) return null;
-    const primeiro = filtrados.find((p) => p[chave] !== null);
-    if (!primeiro) return null;
-    const base = primeiro[chave] as number;
-    const atual = filtrados[ateIdx][chave];
-    if (atual === null || base <= 0) return null;
-    return atual / base - 1;
   }
 
   function handleMove(e: React.MouseEvent<SVGSVGElement>) {
@@ -235,7 +251,7 @@ export function GraficoPatrimonio({ pontos }: { pontos: PontoPatrimonio[] }) {
 
             {hoverIdx !== null &&
               SERIES.map((s) => {
-                const v = filtrados[hoverIdx][s.chave];
+                const v = rentAcumulada(s.chave, hoverIdx);
                 if (v === null) return null;
                 return <circle key={s.chave} cx={xAt(hoverIdx)} cy={yAt(v)} r={3} fill={s.cor} />;
               })}
