@@ -5,7 +5,7 @@ import { calcularScorePorModelo } from "@/lib/score-setorial";
 import { lucroLTM, ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
 import { ehModeloFinanceiro, indicadorPermitido } from "@/lib/setores";
 import { marketCapSelecionado } from "@/lib/marketcap";
-import { escadaCarry } from "@/lib/carry/escada";
+import { escadaCarry, melhorDegrauCalculavel } from "@/lib/carry/escada";
 
 /**
  * MOTOR DE GATILHOS — coração da Tese Viva.
@@ -368,7 +368,8 @@ export async function GET(req: NextRequest) {
     // usa o degrau mais alto já calculável (Cash > Growth > Floor) — o
     // Floor sempre tem "resultado" preenchido (mesmo com carryReal null e
     // explicação de pendência), então sempre sobra pelo menos ele.
-    const melhorDegrau = [...degraus].reverse().find((d) => d.resultado !== null) ?? degraus[0];
+    // Regra extraída para src/lib/carry/escada.ts (Foundation v3 — Módulo 8).
+    const melhorDegrau = melhorDegrauCalculavel(degraus);
     if (melhorDegrau.resultado) {
       const { error: errCarry } = await supabase.from("carry_score").insert({
         ticker: tese.ticker,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { carryVigente } from "./index";
 import { carryV2Growth } from "./v2-growth";
 import { carryV3Cash } from "./v3-cash";
-import { escadaCarry } from "./escada";
+import { escadaCarry, melhorDegrauCalculavel } from "./escada";
 import type { CarryEntrada } from "./types";
 
 /** Carry Engine — determinístico, explicado, e com trava de linguagem. */
@@ -195,5 +195,35 @@ describe("escadaCarry", () => {
     // 4 e 5 continuam pendentes — precisam de série histórica, não de wiring
     expect(degraus[3].resultado).toBeNull();
     expect(degraus[4].resultado).toBeNull();
+  });
+});
+
+describe("melhorDegrauCalculavel", () => {
+  it("sem DFC: só o Floor tem número, então o Floor vence", () => {
+    const degraus = escadaCarry(base);
+    const melhor = melhorDegrauCalculavel(degraus);
+    expect(melhor.nivel).toBe(1);
+    expect(melhor.resultado?.versao).toBe(1);
+  });
+
+  it("com DFC: Cash (nível 3) vence por ser o mais alto calculável", () => {
+    const comDfc: CarryEntrada = {
+      ...base,
+      dividendosJcpLtm: -180_000_000,
+      caixaOperacionalLtm: 800_000_000,
+      capexLtm: -200_000_000,
+    };
+    const degraus = escadaCarry(comDfc);
+    const melhor = melhorDegrauCalculavel(degraus);
+    expect(melhor.nivel).toBe(3);
+    expect(melhor.resultado?.versao).toBe(3);
+  });
+
+  it("lista vazia: cai no fallback sem quebrar (guarda de tipo)", () => {
+    // degraus[0] como fallback é só segurança de tipo — Floor real nunca é null.
+    // Aqui simulamos o caso degenerado para garantir que a função não lança.
+    const fake = [{ nivel: 1, nome: "x", resultado: null, pendencia: "y" }];
+    expect(() => melhorDegrauCalculavel(fake)).not.toThrow();
+    expect(melhorDegrauCalculavel(fake)).toBe(fake[0]);
   });
 });

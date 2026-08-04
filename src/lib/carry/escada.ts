@@ -64,3 +64,14 @@ export function escadaCarry(e: CarryEntrada): DegrauCarry[] {
     },
   ];
 }
+
+/**
+ * Escolhe o degrau mais alto da escada que já tem resultado calculado.
+ * Extraído de src/app/api/teses/avaliar/route.ts (Foundation v3 — Módulo 8,
+ * Domain Layer) para eliminar a duplicação da mesma regra em dois lugares.
+ * O Floor (nível 1) sempre tem `resultado` não-nulo, então o `?? degraus[0]`
+ * é só uma garantia de tipo — na prática nunca é acionado.
+ */
+export function melhorDegrauCalculavel(degraus: DegrauCarry[]): DegrauCarry {
+  return [...degraus].reverse().find((d) => d.resultado !== null) ?? degraus[0];
+}
