@@ -27,6 +27,12 @@ import { hashPayload, type NivelConfianca } from "./proveniencia";
  * categorias só entram se registradas manualmente. A infraestrutura aceita
  * as 12 categorias da especificação; o COLETOR automático de cada uma é
  * trabalho futuro, não deste Bloco.
+ *
+ * Foundation v4 (Módulo 2, Cause & Effect Engine) acrescentou a categoria
+ * `custos` — não estava na lista original, mas o exemplo de árvore causal
+ * da própria especificação ("Margem caiu → Custos aumentaram → Matéria-prima
+ * encareceu") não tinha categoria de evidência correspondente. Mudança
+ * aditiva (união de tipos), não quebra nada que já usava `EvidenciaCategoria`.
  */
 
 export type EvidenciaCategoria =
@@ -36,6 +42,7 @@ export type EvidenciaCategoria =
   | "margem" // margem aumentou/caiu
   | "roic" // ROIC caiu/subiu
   | "receita" // receita acelerou/desacelerou
+  | "custos" // custos/insumos (ex.: matéria-prima) subiram/caíram — adicionada no Foundation v4 (Cause & Effect Engine) para dar profundidade ao exemplo Carry→Lucro→Margem→Custos da especificação
   | "guidance" // novo guidance da empresa
   | "regulatorio" // mudança regulatória
   | "macro_focus" // novo relatório Focus

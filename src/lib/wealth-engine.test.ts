@@ -1,0 +1,145 @@
+import { describe, expect, it } from "vitest";
+import { calcularWealthEngine, MIN_PREGOES_CAGR } from "./wealth-engine";
+import type { ResultadoPatrimonio, PontoPatrimonio } from "./patrimonio";
+
+function pontos(n: number, diasEntrePontos: number, valorCarteiraFinal = 100): PontoPatrimonio[] {
+  const inicio = new Date("2022-01-01T00:00:00Z").getTime();
+  const umDiaMs = 24 * 60 * 60 * 1000;
+  return Array.from({ length: n }, (_, i) => {
+    const data = new Date(inicio + i * diasEntrePontos * umDiaMs).toISOString().slice(0, 10);
+    return {
+      data,
+      valorCarteira: i === n - 1 ? valorCarteiraFinal : 50 + i,
+      valorInvestidoAcumulado: 50,
+      cdiSimulado: null,
+      ipcaSimulado: null,
+      ibovespaSimulado: null,
+    };
+  });
+}
+
+function patrimonioBase(over: Partial<ResultadoPatrimonio> = {}): ResultadoPatrimonio {
+  return {
+    pontos: [],
+    posicoesForaDaSerie: [],
+    drawdownMaximo: null,
+    sharpe: null,
+    volatilidadeAnualizada: null,
+    sortino: null,
+    motivoSemSharpe: null,
+    rentabilidadeTotal: null,
+    alpha: { vsCdi: null, vsIpca: null, vsIbovespa: null },
+    ...over,
+  };
+}
+
+describe("calcularWealthEngine", () => {
+  it("série curta demais (menos que o mínimo de pregões): CAGR null com motivo", () => {
+    const patrimonio = patrimonioBase({ pontos: pontos(MIN_PREGOES_CAGR - 5, 5), rentabilidadeTotal: 0.1 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.cagr).toBeNull();
+    expect(r.motivoSemCagr).not.toBeNull();
+  });
+
+  it("rentabilidadeTotal indisponível: CAGR null com motivo, mesmo com série longa", () => {
+    const patrimonio = patrimonioBase({ pontos: pontos(MIN_PREGOES_CAGR + 10, 5), rentabilidadeTotal: null });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.cagr).toBeNull();
+    expect(r.motivoSemCagr).toContain("Rentabilidade total");
+  });
+
+  it("anualiza corretamente a rentabilidade total pelo prazo real da série", () => {
+    // ~2 anos de janela (730 dias), rentabilidade total de 100% no período → CAGR ~= sqrt(2)-1
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 1.0 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.cagr).not.toBeNull();
+    expect(r.cagr!).toBeCloseTo(Math.sqrt(2) - 1, 2);
+    expect(r.motivoSemCagr).toBeNull();
+  });
+
+  it("espelha alpha.vsIpca sem recalcular, e anualiza quando disponível", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5, alpha: { vsCdi: null, vsIpca: 0.2, vsIbovespa: null } });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.retornoRealAcimaInflacao).toBe(0.2);
+    expect(r.cagrRealAcimaInflacao).not.toBeNull();
+  });
+
+  it("alpha.vsIpca null: cagrRealAcimaInflacao fica null com aviso, nunca inventa número", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.cagrRealAcimaInflacao).toBeNull();
+    expect(r.avisos.some((a) => a.includes("alpha.vsIpca"))).toBe(true);
+  });
+
+  it("probabilidadeAtingirObjetivo é sempre null — nunca fabrica uma projeção estatística", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 1_000_000 });
+    expect(r.probabilidadeAtingirObjetivo).toBeNull();
+    expect(r.motivoSemProbabilidade.length).toBeGreaterThan(10);
+  });
+
+  it("objetivo informado mas sem CAGR calculável (série curta): tempo estimado null com aviso específico", () => {
+    const patrimonio = patrimonioBase({ pontos: pontos(MIN_PREGOES_CAGR - 5, 5), rentabilidadeTotal: 0.1 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 1_000_000 });
+    expect(r.cagr).toBeNull();
+    expect(r.tempoEstimadoAnos).toBeNull();
+    expect(r.avisos.some((a) => a.includes("Sem CAGR histórico calculável"))).toBe(true);
+  });
+
+  it("patrimônio atual não positivo (série zerada): tempo estimado não projetado, com aviso", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1), 0);
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 1_000_000 });
+    expect(r.cagr).not.toBeNull();
+    expect(r.tempoEstimadoAnos).toBeNull();
+    expect(r.avisos.some((a) => a.includes("Patrimônio atual indisponível ou não positivo"))).toBe(true);
+  });
+
+  it("sem patrimônio objetivo: tempo estimado null com aviso", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: null });
+    expect(r.tempoEstimadoAnos).toBeNull();
+    expect(r.avisos.some((a) => a.includes("objetivo informado"))).toBe(true);
+  });
+
+  it("objetivo já atingido pelo valor atual: tempo estimado zero, com aviso", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1), 200);
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 1.0 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 100 });
+    expect(r.tempoEstimadoAnos).toBe(0);
+    expect(r.avisos.some((a) => a.includes("já foi atingido"))).toBe(true);
+  });
+
+  it("projeta tempo estimado via juros compostos ao CAGR histórico", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 365 / (MIN_PREGOES_CAGR - 1), 100); // ~1 ano, valorCarteira final = 100
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 1.0 }); // 100% no ano → CAGR ~= 1.0
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 400 });
+    expect(r.cagr).not.toBeNull();
+    expect(r.tempoEstimadoAnos).not.toBeNull();
+    const esperado = Math.log(400 / 100) / Math.log(1 + r.cagr!);
+    expect(r.tempoEstimadoAnos!).toBeCloseTo(esperado, 6);
+  });
+
+  it("CAGR não positivo: tempo estimado não calculado, com aviso", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1), 100);
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: -0.3 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 400 });
+    expect(r.cagr).not.toBeNull();
+    expect(r.cagr!).toBeLessThan(0);
+    expect(r.tempoEstimadoAnos).toBeNull();
+    expect(r.avisos.some((a) => a.includes("não positivo"))).toBe(true);
+  });
+
+  it("nunca usa linguagem de recomendação", () => {
+    const serie = pontos(MIN_PREGOES_CAGR, 730 / (MIN_PREGOES_CAGR - 1));
+    const patrimonio = patrimonioBase({ pontos: serie, rentabilidadeTotal: 0.5 });
+    const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 1_000_000 });
+    const texto = [...r.premissas, r.motivoSemProbabilidade, ...r.avisos].join(" ").toLowerCase();
+    expect(texto).not.toMatch(/\bcompre\b|\bvenda\b|recomend/);
+  });
+});
