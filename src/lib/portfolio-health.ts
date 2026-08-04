@@ -52,7 +52,8 @@ const PONTOS_SENSIBILIDADE: Record<CategoriaSensibilidade, number> = {
   muito_alta: 2,
 };
 
-function rotularConcentracao(hhi: number): ConcentracaoRotulo {
+/** Exportado (Sprint 2.9) para reuso em capital-allocation-simulacao.ts — recalcula a banda de concentração sob o cenário de peso sugerido, mesma régua. */
+export function rotularConcentracao(hhi: number): ConcentracaoRotulo {
   // referência de mercado: HHI < 0.15 = pouco concentrado, > 0.25 = muito
   if (hhi < 0.15) return "baixa";
   if (hhi < 0.25) return "moderada";

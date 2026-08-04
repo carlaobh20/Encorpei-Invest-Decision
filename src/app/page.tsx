@@ -46,6 +46,9 @@ import { calcularWealthEngine } from "@/lib/wealth-engine";
 import { gerarCoachInsight } from "@/lib/coach-insights";
 import { InvestmentCoach } from "@/components/InvestmentCoach";
 import { IntelligenceCapsuleCard } from "@/components/IntelligenceCapsuleCard";
+import { montarPortfolioOptimizer } from "@/lib/portfolio-optimizer";
+import { montarCapitalAllocationView } from "@/lib/capital-allocation-simulacao";
+import { SimuladorMeta } from "@/components/SimuladorMeta";
 
 export const dynamic = "force-dynamic";
 
@@ -353,6 +356,11 @@ export default async function DecisionCenter() {
   // CAGR histórico/CAGR real acima da inflação (que NÃO dependem de meta)
   // aparecem reais; tempo estimado/gap ficam "Em desenvolvimento".
   const wealthEngineResultado = patrimonio ? calcularWealthEngine({ patrimonio: patrimonio.resultado, patrimonioObjetivo: null }) : null;
+  // Patrimônio atual (último ponto da série real) — alimenta o Simulador de Meta (Sprint 2.9) client-side, sem tocar o banco.
+  const ultimoPontoPatrimonio = patrimonio && patrimonio.resultado.pontos.length > 0
+    ? patrimonio.resultado.pontos[patrimonio.resultado.pontos.length - 1]
+    : null;
+  const patrimonioAtualDash = ultimoPontoPatrimonio?.valorCarteira ?? null;
 
   // ---------- Decision Object (Foundation v4, Opção A — só esta tela) ----------
   let decisionFeed: ReturnType<typeof gerarDecisionFeed> = [];
@@ -368,6 +376,9 @@ export default async function DecisionCenter() {
   let wealthCoachInsight: ReturnType<typeof gerarCoachInsight> = null;
   let quickActions: ReturnType<typeof bucketizarQuickActions> = { hoje: [], esta_semana: [], este_mes: [] };
   const fdieAgregadoCarteira = { ok: 0, alerta: 0, critico: 0, total: 0 };
+  // ---------- Wealth Intelligence Layer (Bloco 2, Sprint 2.9) ----------
+  let portfolioOptimizer: ReturnType<typeof montarPortfolioOptimizer> | null = null;
+  let capitalAllocation: ReturnType<typeof montarCapitalAllocationView> | null = null;
 
   if (carteira && carteira.linhas.length > 0) {
     const [technicalLinhas, compounderLinhas] = await Promise.all([
@@ -411,7 +422,7 @@ export default async function DecisionCenter() {
     const fitMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: portfolioFitPorTicker.get(l.ticker)?.scoreEncaixe ?? null })));
     const drawdownMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: decisions.get(l.ticker)?.expectedDrawdown.valor ?? null })));
 
-    wealthHealth = montarWealthHealth({
+    const entradaWealthHealth = {
       confluenceMedio: saudeV2.confluenceV2.valor,
       carryMedioPonderado: saudeV2.saude.carryMedioPonderado,
       concentracaoRotulo: saudeV2.saude.concentracaoRotulo,
@@ -419,7 +430,23 @@ export default async function DecisionCenter() {
       qualityMedioPonderado: qualityMedio.valor,
       portfolioFitMedioPonderado: fitMedio.valor,
       drawdownEsperadoMedioPonderado: drawdownMedio.valor,
-    });
+    };
+    wealthHealth = montarWealthHealth(entradaWealthHealth);
+
+    // ---------- Portfolio Optimizer (Sprint 2.9, Módulo 2) ----------
+    // Reaproveita o MESMO montarWealthHealth acima (nenhum motor novo) — só
+    // chama de novo com concentração/liquidez no melhor patamar possível.
+    portfolioOptimizer = montarPortfolioOptimizer(entradaWealthHealth);
+
+    // ---------- Capital Allocation (Sprint 2.9, Módulo 3) ----------
+    // Achado do sprint: o motor `calcularAlocacaoCapital` (Foundation v4,
+    // Módulo 6) já existia congelado e nunca tinha sido conectado a
+    // nenhuma tela — esta é só a composição que alimenta ele com a
+    // carteira atual, nenhum cálculo de alocação novo (ver
+    // capital-allocation-simulacao.ts).
+    capitalAllocation = montarCapitalAllocationView(
+      linhasComPeso.map((l) => ({ ticker: l.ticker, pesoAtual: l.peso, confluence: decisions.get(l.ticker)?.confluence ?? null }))
+    );
 
     for (const l of linhasComPeso) {
       const d = decisions.get(l.ticker);
@@ -1333,17 +1360,98 @@ export default async function DecisionCenter() {
               titulo="Anualização do retorno acima da inflação"
             />
             <StatMini rotulo="Probabilidade de atingir a meta" valor="—" titulo={wealthEngineResultado.motivoSemProbabilidade} />
-            <StatMini rotulo="Gap até a meta" valor="Em desenvolvimento" titulo="Depende da meta patrimonial acima." />
+            <StatMini rotulo="Gap até a meta" valor="Ver simulador abaixo" titulo="Sem cadastro persistente ainda — simule abaixo, efêmero, sem tocar o banco." />
           </div>
         ) : (
           <p className="text-[12px] text-slate-500">Sem série de patrimônio suficiente ainda para o Wealth Engine.</p>
         )}
         <p className="mt-2 text-[9.5px] text-slate-700">
-          Estrutura pronta (CAGR/tempo-até-meta/gap já existem em wealth-engine.ts) — só falta um lugar pra você
-          registrar a meta patrimonial. Decisão registrada no roadmap: exige migração nova, represada atrás das
-          migrações 022/023 (mesmo bloqueio de conector Supabase).
+          Cadastro PERSISTENTE de meta (entre sessões) ainda não existe — exige migração nova, represada atrás das
+          migrações 022/023 (mesmo bloqueio de conector Supabase). Enquanto isso, o simulador abaixo (Sprint 2.9)
+          entrega gap/CAGR necessário na hora, sem precisar do banco — você digita a meta toda vez.
         </p>
+        <div className="mt-3 border-t border-white/[0.06] pt-3">
+          <p className="mb-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">Simulador de Meta</p>
+          <SimuladorMeta patrimonioAtual={patrimonioAtualDash} cagrRealHistoricoAA={wealthEngineResultado?.cagrRealAcimaInflacao ?? null} />
+        </div>
       </Bloco>
+
+      {/* ================= SEÇÃO — PORTFOLIO OPTIMIZER (Sprint 2.9, Módulo 2) ================= */}
+      {portfolioOptimizer && portfolioOptimizer.atual.score !== null && (
+        <Bloco titulo="Portfolio Optimizer" subtitulo="Minha carteira é a melhor possível?">
+          <div className="grid grid-cols-2 gap-3">
+            <StatMini rotulo="Nota atual" valor={`${portfolioOptimizer.atual.score}/100`} nota={ROTULO_BANDA_WEALTH_HEALTH[portfolioOptimizer.atual.banda]} />
+            <StatMini
+              rotulo="Nota ideal"
+              valor={portfolioOptimizer.ideal.score !== null ? `${portfolioOptimizer.ideal.score}/100` : "—"}
+              nota="mesma carteira, com Diversificação e Liquidez no melhor patamar"
+              cor={portfolioOptimizer.diferencaScore && portfolioOptimizer.diferencaScore > 0 ? "text-amber-300" : "text-slate-100"}
+            />
+          </div>
+          <p className="mt-2 text-[9.5px] text-slate-700">
+            &quot;Nota ideal&quot; aqui NÃO é uma carteira hipotética diferente — é a sua carteira atual, só com concentração/liquidez
+            no melhor patamar. Confluence/Carry/Quality/Portfolio Fit/Risco dependem de QUAIS ativos você tem, não de como o peso é
+            distribuído entre eles, por isso ficam iguais nos dois cenários.
+          </p>
+          <p className="mt-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-500">Gargalos (maior gap primeiro)</p>
+          <div className="mt-1 space-y-1">
+            {portfolioOptimizer.gargalos.filter((g) => g.gap !== null && g.gap > 0).slice(0, 3).map((g) => (
+              <div key={g.chave} className="flex items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1 text-[11px]">
+                <span className="text-slate-300">{g.rotulo}</span>
+                <span className={g.acionavelPorRebalanceamento ? "font-mono text-amber-300" : "font-mono text-slate-500"}>
+                  +{g.gap!.toFixed(0)}pts {g.acionavelPorRebalanceamento ? "(rebalanceável)" : "(depende dos ativos)"}
+                </span>
+              </div>
+            ))}
+            {portfolioOptimizer.gargalos.every((g) => g.gap === null || g.gap <= 0) && (
+              <p className="text-[11px] text-emerald-400">Nenhum gargalo — diversificação e liquidez já estão no melhor patamar.</p>
+            )}
+          </div>
+        </Bloco>
+      )}
+
+      {/* ================= SEÇÃO — CAPITAL ALLOCATION (Sprint 2.9, Módulo 3) ================= */}
+      {capitalAllocation && capitalAllocation.posicoes.length > 0 && (
+        <Bloco titulo="Capital Allocation" subtitulo="Simulação — nunca uma ordem de compra ou venda">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="text-left text-[9px] uppercase tracking-wider text-slate-500">
+                  <th className="pb-1.5 pr-2">Empresa</th>
+                  <th className="pb-1.5 pr-2 text-right">Peso atual</th>
+                  <th className="pb-1.5 pr-2 text-right">Peso sugerido</th>
+                  <th className="pb-1.5 pr-2 text-right">Faixa saudável</th>
+                  <th className="pb-1.5 text-right">Impacto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...capitalAllocation.posicoes].sort((a, b) => b.pesoAtual - a.pesoAtual).map((p) => (
+                  <tr key={p.ticker} className="border-t border-white/5">
+                    <td className="py-1.5 pr-2">
+                      <Link href={`/tese/${p.ticker}`} className="font-mono text-slate-200 hover:underline">{p.ticker}</Link>
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-mono text-slate-400">{(p.pesoAtual * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%</td>
+                    <td className="py-1.5 pr-2 text-right font-mono text-slate-300">
+                      {p.pesoSugerido !== null ? `${(p.pesoSugerido * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}
+                    </td>
+                    <td className="py-1.5 pr-2 text-right font-mono text-slate-600">
+                      {(p.faixaSaudavel.min * 100).toFixed(0)}–{(p.faixaSaudavel.max * 100).toFixed(0)}%
+                    </td>
+                    <td className="py-1.5 text-right text-[9.5px] text-slate-500">{p.impactoTexto}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {capitalAllocation.percentualForaDistribuicao > 0 && (
+            <p className="mt-2 text-[9.5px] text-amber-300">
+              {(capitalAllocation.percentualForaDistribuicao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% da carteira (por peso atual)
+              está fora da simulação — sem Confluence suficiente ou indisponível.
+            </p>
+          )}
+          <p className="mt-1 text-[9.5px] text-slate-700">{capitalAllocation.aviso}</p>
+        </Bloco>
+      )}
 
       {/* ================= SEÇÃO 4 — PERFORMANCE ATTRIBUTION (Sprint 2.8) ================= */}
       {attribution && attribution.posicoes.length > 0 && (
@@ -1381,6 +1489,13 @@ export default async function DecisionCenter() {
             </table>
           </div>
           <p className="mt-2 text-[9.5px] text-slate-700">{attribution.avisoVolatilidade}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {attribution.fatoresIndisponiveis.map((f) => (
+              <span key={f.chave} title={f.motivo} className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] text-slate-500">
+                {f.rotulo}: Em desenvolvimento
+              </span>
+            ))}
+          </div>
         </Bloco>
       )}
 

@@ -123,3 +123,136 @@ export function calcularWealthEngine(entrada: EntradaWealthEngine): ResultadoWea
     motivoSemProbabilidade: MOTIVO_SEM_PROBABILIDADE,
   };
 }
+
+/**
+ * SIMULADOR DE META (Bloco 2, Sprint 2.9, Wealth Intelligence Layer —
+ * Módulo 1, extensão do Wealth Engine). "Cadastrar meta/prazo/aporte
+ * mensal/inflação esperada, permitir simulações/probabilidade/gap. Nunca
+ * criar estimativas sem identificar claramente quando forem projeções."
+ *
+ * Esta função é EFÊMERA por decisão de escopo: não lê nem grava nada no
+ * banco (ver `docs/wealth-intelligence-layer.md` — cadastro PERSISTENTE de
+ * meta exigiria uma tabela nova, e já existem 2 migrações escritas e
+ * paradas há 5 sprints pelo bloqueio de conector Supabase; empilhar uma
+ * terceira sem forma de testar contra o banco real repetiria a mesma
+ * decisão de escopo já registrada no Sprint 2.8). Carlos digita a meta
+ * toda vez que quiser simular — sem persistência entre sessões.
+ *
+ * "Probabilidade" continua NUNCA fabricada — mesma disciplina de
+ * `calcularWealthEngine` acima: exigiria motor estocástico (Monte Carlo)
+ * que não existe, e construir um agora violaria a própria regra desta
+ * sprint ("não criar novos motores"). Em vez disso, entrega uma PROJEÇÃO
+ * DETERMINÍSTICA (juros compostos reais + aportes mensais, mesma família
+ * de cálculo que `tempoEstimadoAnos` já usa acima) — sempre rotulada como
+ * premissa, nunca como garantia ou estatística.
+ *
+ * Tudo em TERMOS REAIS (acima do IPCA) — mesma convenção do Carry e do
+ * resto do sistema. `inflacaoEspAA`, quando informada, só converte o
+ * resultado pra um valor nominal aproximado de referência — não entra na
+ * conta real.
+ */
+
+export type EntradaSimulacaoMeta = {
+  patrimonioAtual: number;
+  metaPatrimonial: number;
+  prazoAnos: number;
+  aporteMensalReal: number;
+  /** CAGR real (acima do IPCA) assumido na projeção — normalmente `cagrRealAcimaInflacao` já calculado acima; o usuário pode sobrescrever pra testar cenários */
+  cagrRealAA: number | null;
+  inflacaoEspAA: number | null;
+};
+
+export type ResultadoSimulacaoMeta = {
+  /** projeção determinística do patrimônio ao final do prazo, nos aportes e CAGR informados — nunca uma garantia */
+  patrimonioProjetado: number | null;
+  /** metaPatrimonial - patrimonioProjetado; positivo = projeção fica AQUÉM da meta */
+  gap: number | null;
+  /** CAGR real anual que fecharia o gap exatamente no prazo informado, mantendo o mesmo aporte mensal — null se não convergir */
+  cagrNecessarioAA: number | null;
+  /** meta convertida a valores nominais estimados ao final do prazo, só como referência — nunca usada na conta real */
+  metaNominalEstimada: number | null;
+  motivoIndisponivel: string | null;
+  premissas: string[];
+  avisoProjecao: string;
+};
+
+const AVISO_PROJECAO_META =
+  "Projeção determinística — juros compostos reais sobre o CAGR informado, nunca uma probabilidade estatística. Não é garantia de resultado; o mercado pode entregar CAGR bem diferente do histórico.";
+
+function valorFuturoComAportes(patrimonioAtual: number, aporteMensal: number, cagrAA: number, anos: number): number {
+  const meses = Math.round(anos * 12);
+  const taxaMensal = Math.pow(1 + cagrAA, 1 / 12) - 1;
+  const fvPrincipal = patrimonioAtual * Math.pow(1 + cagrAA, anos);
+  const fvAportes =
+    Math.abs(taxaMensal) < 1e-12
+      ? aporteMensal * meses
+      : aporteMensal * ((Math.pow(1 + taxaMensal, meses) - 1) / taxaMensal);
+  return fvPrincipal + fvAportes;
+}
+
+/** Bisseção simples — FV é monotonicamente crescente em cagrAA, então converge sem precisar de derivada. */
+function cagrNecessarioParaMeta(
+  patrimonioAtual: number,
+  aporteMensal: number,
+  anos: number,
+  meta: number
+): number | null {
+  let baixo = -0.5;
+  let alto = 1.0;
+  if (valorFuturoComAportes(patrimonioAtual, aporteMensal, alto, anos) < meta) return null; // meta inatingível mesmo a 100% a.a. real
+  for (let i = 0; i < 60; i++) {
+    const meio = (baixo + alto) / 2;
+    const fv = valorFuturoComAportes(patrimonioAtual, aporteMensal, meio, anos);
+    if (fv < meta) baixo = meio;
+    else alto = meio;
+  }
+  return (baixo + alto) / 2;
+}
+
+export function simularMeta(entrada: EntradaSimulacaoMeta): ResultadoSimulacaoMeta {
+  const { patrimonioAtual, metaPatrimonial, prazoAnos, aporteMensalReal, cagrRealAA, inflacaoEspAA } = entrada;
+
+  const premissas = [
+    "Tudo em termos reais (acima do IPCA) — mesma convenção do Carry.",
+    "Projeção assume CAGR real e aporte mensal constantes pelo prazo inteiro — premissa explícita, não previsão.",
+    "Sem motor estocástico: não há probabilidade estatística, só a projeção sob esta premissa única.",
+  ];
+
+  if (prazoAnos <= 0) {
+    return {
+      patrimonioProjetado: null,
+      gap: null,
+      cagrNecessarioAA: null,
+      metaNominalEstimada: null,
+      motivoIndisponivel: "Prazo precisa ser maior que zero.",
+      premissas,
+      avisoProjecao: AVISO_PROJECAO_META,
+    };
+  }
+  if (cagrRealAA === null) {
+    return {
+      patrimonioProjetado: null,
+      gap: null,
+      cagrNecessarioAA: null,
+      metaNominalEstimada: null,
+      motivoIndisponivel: "Sem CAGR real histórico calculável ainda (carteira recente demais) — informe um CAGR manualmente pra simular.",
+      premissas,
+      avisoProjecao: AVISO_PROJECAO_META,
+    };
+  }
+
+  const patrimonioProjetado = valorFuturoComAportes(patrimonioAtual, aporteMensalReal, cagrRealAA, prazoAnos);
+  const gap = metaPatrimonial - patrimonioProjetado;
+  const cagrNecessarioAA = cagrNecessarioParaMeta(patrimonioAtual, aporteMensalReal, prazoAnos, metaPatrimonial);
+  const metaNominalEstimada = inflacaoEspAA !== null ? metaPatrimonial * Math.pow(1 + inflacaoEspAA, prazoAnos) : null;
+
+  return {
+    patrimonioProjetado,
+    gap,
+    cagrNecessarioAA,
+    metaNominalEstimada,
+    motivoIndisponivel: null,
+    premissas,
+    avisoProjecao: AVISO_PROJECAO_META,
+  };
+}

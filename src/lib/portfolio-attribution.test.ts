@@ -53,4 +53,12 @@ describe("montarPortfolioAttribution", () => {
     const r = montarPortfolioAttribution([]);
     expect(r.posicoes).toEqual([]);
   });
+
+  it("expansão de múltiplo e dividendos aparecem sempre como fatores indisponíveis, com motivo — nunca fabricados (Sprint 2.9)", () => {
+    const r = montarPortfolioAttribution([{ ticker: "A3", peso: 1, resultadoPct: 0, carryReal: null }]);
+    expect(r.fatoresIndisponiveis.map((f) => f.chave).sort()).toEqual(["dividendos", "expansao_multiplo"]);
+    for (const f of r.fatoresIndisponiveis) {
+      expect(f.motivo.length).toBeGreaterThan(0);
+    }
+  });
 });

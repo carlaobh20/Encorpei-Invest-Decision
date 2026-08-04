@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularWealthEngine, MIN_PREGOES_CAGR } from "./wealth-engine";
+import { calcularWealthEngine, MIN_PREGOES_CAGR, simularMeta } from "./wealth-engine";
 import type { ResultadoPatrimonio, PontoPatrimonio } from "./patrimonio";
 
 function pontos(n: number, diasEntrePontos: number, valorCarteiraFinal = 100): PontoPatrimonio[] {
@@ -141,5 +141,150 @@ describe("calcularWealthEngine", () => {
     const r = calcularWealthEngine({ patrimonio, patrimonioObjetivo: 1_000_000 });
     const texto = [...r.premissas, r.motivoSemProbabilidade, ...r.avisos].join(" ").toLowerCase();
     expect(texto).not.toMatch(/\bcompre\b|\bvenda\b|recomend/);
+  });
+});
+
+describe("simularMeta", () => {
+  it("sem CAGR real informado: projeção indisponível, com motivo — nunca assume um CAGR arbitrário", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 10,
+      aporteMensalReal: 1_000,
+      cagrRealAA: null,
+      inflacaoEspAA: null,
+    });
+    expect(r.patrimonioProjetado).toBeNull();
+    expect(r.motivoIndisponivel).not.toBeNull();
+  });
+
+  it("prazo zero ou negativo: indisponível com motivo", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 0,
+      aporteMensalReal: 1_000,
+      cagrRealAA: 0.08,
+      inflacaoEspAA: null,
+    });
+    expect(r.patrimonioProjetado).toBeNull();
+    expect(r.motivoIndisponivel).toContain("Prazo");
+  });
+
+  it("sem aporte e CAGR zero: projeção = patrimônio atual (juros compostos degenerado)", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 10,
+      aporteMensalReal: 0,
+      cagrRealAA: 0,
+      inflacaoEspAA: null,
+    });
+    expect(r.patrimonioProjetado).toBeCloseTo(100_000, 2);
+  });
+
+  it("com aporte mensal constante e CAGR zero: projeção = patrimônio atual + soma dos aportes", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 5,
+      aporteMensalReal: 1_000,
+      cagrRealAA: 0,
+      inflacaoEspAA: null,
+    });
+    expect(r.patrimonioProjetado).toBeCloseTo(100_000 + 1_000 * 60, 2);
+  });
+
+  it("gap positivo quando a projeção fica aquém da meta", () => {
+    const r = simularMeta({
+      patrimonioAtual: 10_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 5,
+      aporteMensalReal: 100,
+      cagrRealAA: 0.05,
+      inflacaoEspAA: null,
+    });
+    expect(r.gap).not.toBeNull();
+    expect(r.gap!).toBeGreaterThan(0);
+  });
+
+  it("gap negativo (ou zero) quando a projeção já bate a meta", () => {
+    const r = simularMeta({
+      patrimonioAtual: 950_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 5,
+      aporteMensalReal: 5_000,
+      cagrRealAA: 0.08,
+      inflacaoEspAA: null,
+    });
+    expect(r.gap!).toBeLessThanOrEqual(0);
+  });
+
+  it("cagrNecessarioAA: aplicado de volta na mesma projeção, bate a meta dentro do prazo (verificação por bisseção inversa)", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 500_000,
+      prazoAnos: 10,
+      aporteMensalReal: 500,
+      cagrRealAA: 0.03, // CAGR "atual" baixo demais de propósito, pra forçar cagrNecessario > cagrRealAA
+      inflacaoEspAA: null,
+    });
+    expect(r.cagrNecessarioAA).not.toBeNull();
+    const verificacao = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 500_000,
+      prazoAnos: 10,
+      aporteMensalReal: 500,
+      cagrRealAA: r.cagrNecessarioAA,
+      inflacaoEspAA: null,
+    });
+    expect(verificacao.patrimonioProjetado!).toBeCloseTo(500_000, 0);
+  });
+
+  it("meta inatingível mesmo a 100% a.a. real: cagrNecessarioAA null, nunca um número fabricado", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100,
+      metaPatrimonial: 100_000_000,
+      prazoAnos: 1,
+      aporteMensalReal: 0,
+      cagrRealAA: 0.08,
+      inflacaoEspAA: null,
+    });
+    expect(r.cagrNecessarioAA).toBeNull();
+  });
+
+  it("metaNominalEstimada só aparece quando inflacaoEspAA é informada, nunca fabricada por padrão", () => {
+    const semInflacao = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 10,
+      aporteMensalReal: 1_000,
+      cagrRealAA: 0.05,
+      inflacaoEspAA: null,
+    });
+    expect(semInflacao.metaNominalEstimada).toBeNull();
+
+    const comInflacao = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 10,
+      aporteMensalReal: 1_000,
+      cagrRealAA: 0.05,
+      inflacaoEspAA: 0.04,
+    });
+    expect(comInflacao.metaNominalEstimada).toBeCloseTo(1_000_000 * Math.pow(1.04, 10), 2);
+  });
+
+  it("aviso de projeção nunca vira linguagem de probabilidade nem de recomendação", () => {
+    const r = simularMeta({
+      patrimonioAtual: 100_000,
+      metaPatrimonial: 1_000_000,
+      prazoAnos: 10,
+      aporteMensalReal: 1_000,
+      cagrRealAA: 0.05,
+      inflacaoEspAA: null,
+    });
+    expect(r.avisoProjecao.toLowerCase()).not.toMatch(/probabilidade estatística de|\bcompre\b|\bvenda\b/);
+    expect(r.avisoProjecao.toLowerCase()).toContain("projeção determinística");
   });
 });

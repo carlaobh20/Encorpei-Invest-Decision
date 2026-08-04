@@ -20,6 +20,18 @@
  * número de volatilidade sem esse motor seria o mesmo erro que
  * `wealth-engine.ts` já se recusa a cometer com `probabilidadeAtingirObjetivo`
  * — mesma disciplina aplicada aqui.
+ *
+ * Sprint 2.9 (Wealth Intelligence Layer, Módulo 4) pediu para separar
+ * também "Expansão de múltiplo" e "Dividendos" — nenhum dos dois tem fonte
+ * real hoje: expansão de múltiplo exigiria série histórica de P/L (ou
+ * EV/EBITDA) persistida, que não existe (mesma pendência já registrada em
+ * `truth-missing-data.ts`); dividendos exigiria rastrear proventos
+ * recebidos por posição, que o sistema nunca coletou (confirmado por busca
+ * no código — `dividend_yield` só existe como entrada de dicionário/"sem
+ * série persistida", nunca como valor calculado). A própria spec pede
+ * "quando um fator não puder ser calculado, mostrar claramente 'Em
+ * desenvolvimento'" — é exatamente isso que `fatoresIndisponiveis` faz,
+ * em vez de fabricar os dois números.
  */
 
 export type EntradaContribuicaoPosicao = {
@@ -44,15 +56,37 @@ export type ContribuicaoPosicao = {
   impactoConcentracao: number;
 };
 
+export type FatorIndisponivel = {
+  chave: "expansao_multiplo" | "dividendos";
+  rotulo: string;
+  motivo: string;
+};
+
 export type ResultadoAttribution = {
   posicoes: ContribuicaoPosicao[];
   avisoVolatilidade: string;
+  /** fatores pedidos pela spec (Sprint 2.9) sem fonte de dado real — nunca fabricados, sempre "Em desenvolvimento" com o motivo. */
+  fatoresIndisponiveis: FatorIndisponivel[];
 };
 
 const AVISO_VOLATILIDADE =
   "Contribuição para volatilidade não é calculada — exigiria série de retornos e matriz de covariância entre as posições, motor que não existe hoje. Mostrar um número aqui sem esse motor seria uma projeção fabricada.";
 
-function hhi(pesos: number[]): number {
+const FATORES_INDISPONIVEIS: FatorIndisponivel[] = [
+  {
+    chave: "expansao_multiplo",
+    rotulo: "Expansão de múltiplo",
+    motivo: "Exigiria série histórica de P/L (ou EV/EBITDA) persistida diariamente — o sistema hoje só guarda o preço, não o múltiplo histórico.",
+  },
+  {
+    chave: "dividendos",
+    rotulo: "Dividendos",
+    motivo: "O sistema não rastreia proventos recebidos por posição — nenhuma tabela/coleta existe para isso hoje.",
+  },
+];
+
+/** Exportado (Sprint 2.9) para reuso em capital-allocation-simulacao.ts — mesma definição de HHI, nunca uma segunda fórmula de concentração. */
+export function hhi(pesos: number[]): number {
   return pesos.reduce((a, p) => a + p * p, 0);
 }
 
@@ -75,5 +109,5 @@ export function montarPortfolioAttribution(entradas: EntradaContribuicaoPosicao[
     };
   });
 
-  return { posicoes, avisoVolatilidade: AVISO_VOLATILIDADE };
+  return { posicoes, avisoVolatilidade: AVISO_VOLATILIDADE, fatoresIndisponiveis: FATORES_INDISPONIVEIS };
 }
