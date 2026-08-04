@@ -23,6 +23,12 @@ const GRUPOS: { rotulo: string; links: [string, string][] }[] = [
     rotulo: "Patrimônio",
     links: [
       ["/", "Meu Dash"],
+      // Decision Center (Sprint 2.1, 04/08/2026): passo parcial rumo à
+      // navegação-alvo de 6 itens do product-architecture.md (Meu Dash /
+      // Decision Center / Empresas / Research Lab / Replay / Sistema) — a
+      // migração completa do menu é trabalho de sprint futura, registrada
+      // lá; aqui só entra o link novo, sem remover nenhum existente.
+      ["/decisoes", "Decision Center"],
       ["/carteira", "Minha Carteira"],
     ],
   },

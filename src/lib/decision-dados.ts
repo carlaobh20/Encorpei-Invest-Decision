@@ -8,6 +8,7 @@ import type { EmpresaAuditavel } from "@/lib/auditoria";
 import type { CarryEntrada } from "@/lib/carry/types";
 import type { LinhaCompounder } from "@/lib/compounder-dados";
 import type { LinhaTechnical } from "@/lib/technical-dados";
+import { avaliarDecisoes, type DecisaoEntrada, type DecisaoAvaliada } from "@/lib/decision-history";
 
 /**
  * DECISION DADOS (Bloco 2 — Sprint 2.1, Meu Dash).
@@ -64,10 +65,19 @@ type Fluxo = {
   dividendos_jcp: number | null;
 };
 
+type DecisaoRow = {
+  id: number;
+  ticker: string;
+  decisao: string;
+  justificativa: string;
+  contexto: { preco?: number | null } | null;
+  criado_em: string;
+};
+
 async function buscarEntradasMasterEngine(
   sb: SupabaseClient,
   tickers: string[]
-): Promise<{ entrada: EntradaMasterEngine; setor: string | null; empresa: string }[]> {
+): Promise<{ entrada: EntradaMasterEngine; setor: string | null; empresa: string; precoAtual: number | null }[]> {
   const [{ data: empresasRaw }, { data: fundsRaw }, { data: precosRaw }, { data: acoesRaw }, { data: fluxoRaw }] =
     await Promise.all([
       sb.from("empresas").select("ticker, nome, setor").eq("ativo", true),
@@ -109,7 +119,7 @@ async function buscarEntradasMasterEngine(
     (((acoesRaw as { ticker: string; qtd_acoes: number }[]) ?? [])).map((a) => [a.ticker, Number(a.qtd_acoes)])
   );
 
-  const saida: { entrada: EntradaMasterEngine; setor: string | null; empresa: string }[] = [];
+  const saida: { entrada: EntradaMasterEngine; setor: string | null; empresa: string; precoAtual: number | null }[] = [];
 
   for (const e of empresas) {
     const funds = fundsPorTicker.get(e.ticker) ?? [];
@@ -205,10 +215,54 @@ async function buscarEntradasMasterEngine(
       },
       setor: e.setor,
       empresa: e.nome,
+      precoAtual: preco?.fechamento ?? null,
     });
   }
 
   return saida;
+}
+
+/**
+ * Julga decisões já registradas no Diário (`decisoes`) contra o preço atual —
+ * MESMO padrão já usado em produção por `src/app/diario/page.tsx`
+ * (`avaliarDecisoes`, `contexto.preco` → `precoNaDecisao`), só replicado aqui
+ * para alimentar `EntradaMasterEngine.decisoesAvaliadas` (campo OPCIONAL que
+ * já existia em `master-engine.ts` mas nunca tinha sido preenchido em
+ * produção — por isso `Decision.probability` sempre saía `null`). Nenhuma
+ * conta nova: mesmo motor (`decision-history.ts`), mesma leitura de tabela.
+ */
+async function buscarDecisoesAvaliadasPorTicker(
+  sb: SupabaseClient,
+  tickers: string[],
+  precoAtualPorTicker: Map<string, number>,
+  agora: string
+): Promise<Map<string, DecisaoAvaliada[]>> {
+  const resultado = new Map<string, DecisaoAvaliada[]>();
+  if (tickers.length === 0) return resultado;
+
+  const { data: decisoesRaw } = await sb
+    .from("decisoes")
+    .select("id, ticker, decisao, justificativa, contexto, criado_em")
+    .in("ticker", tickers)
+    .order("criado_em", { ascending: false });
+
+  const entradas: DecisaoEntrada[] = ((decisoesRaw as DecisaoRow[]) ?? []).map((d) => ({
+    id: d.id,
+    ticker: d.ticker,
+    decisao: d.decisao as DecisaoEntrada["decisao"],
+    justificativa: d.justificativa,
+    criadoEm: d.criado_em,
+    precoNaDecisao: d.contexto?.preco ?? null,
+  }));
+  if (entradas.length === 0) return resultado;
+
+  const avaliadas = avaliarDecisoes(entradas, precoAtualPorTicker, agora);
+  for (const da of avaliadas) {
+    const arr = resultado.get(da.ticker) ?? [];
+    arr.push(da);
+    resultado.set(da.ticker, arr);
+  }
+  return resultado;
 }
 
 /**
@@ -232,6 +286,17 @@ export async function montarDecisions(
   const vistos = new Set(base.map((b) => b.entrada.ticker));
   const semDadoSuficiente = tickers.filter((t) => !vistos.has(t));
 
+  const precoAtualPorTicker = new Map<string, number>();
+  for (const b of base) {
+    if (b.precoAtual !== null) precoAtualPorTicker.set(b.entrada.ticker, b.precoAtual);
+  }
+  const decisoesAvaliadasPorTicker = await buscarDecisoesAvaliadasPorTicker(
+    sb,
+    tickers,
+    precoAtualPorTicker,
+    generatedAt
+  );
+
   for (const { entrada, setor, empresa } of base) {
     const fund = fundamentosPorTicker.get(entrada.ticker);
     const comp = compounderPorTicker.get(entrada.ticker);
@@ -243,6 +308,7 @@ export async function montarDecisions(
       fundamentosComponentes: fund?.componentes ?? 0,
       compounderScore: comp?.resultado.score ?? null,
       technicalScore: tec?.resultado.score ?? null,
+      decisoesAvaliadas: decisoesAvaliadasPorTicker.get(entrada.ticker),
     };
 
     const resultado = calcularMasterDecision(entradaCompleta);
