@@ -1,6 +1,82 @@
 # Encorpei Invest — Status de execução
 
-Atualizado em 03/08/2026 ~22h05 (Gráfico de Evolução do Patrimônio: linhas de CDI e IPCA que tinham sumido do gráfico — corrigidas e no ar; Ibovespa continua "—", motivo é falta de histórico coletado, não bug · Meu Dash reconstruído como terminal financeiro denso, 4 linhas, 1ª dobra sem scroll — no ar · Carteira + Saúde da Carteira mescladas em "Minha Carteira" — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+Atualizado em 04/08/2026 ~00h20 (⚠️ FIAÇÃO DO MOTOR: código pronto, testado e commitado (b3e3fce) — PUSH BLOQUEADO pelo classifier de segurança da sessão, precisa de decisão do Carlos, ver seção abaixo · Verificação da estreia do motor (20h30 BRT): valuation/confiança/2T26/coluna Dia/histórico técnico todos OK, migrações 009-013 já estavam aplicadas, nenhum gatilho disparou nesta rodada · Gráfico de Evolução do Patrimônio: linhas de CDI e IPCA que tinham sumido do gráfico — corrigidas e no ar; Ibovespa continua "—", motivo é falta de histórico coletado, não bug · Meu Dash reconstruído como terminal financeiro denso, 4 linhas, 1ª dobra sem scroll — no ar · Carteira + Saúde da Carteira mescladas em "Minha Carteira" — no ar · Carteira ganha botões editar/excluir por posição — no ar · PIN removido do Diário E da Carteira (Vercel Authentication já protege o domínio) — no ar · ERL (Research Lab): Fase 1 arquitetura + governança, migração 019 aplicada — no ar · Carry Engine: níveis 2-3 (Growth/Cash) destravados + legenda + leitura automática — no ar · PIC 01 Fase 1.5: Diário ganha histórico de acertos/erros — no ar · Auditoria de dados corrigida e no ar · 11 teses ratificadas · FDIE Fase 1 no ar · Compounder Engine v1 no ar · Technical Intelligence Engine v1 no ar).
+
+## NOVO (04/08 ~00h20): FIAÇÃO DO MOTOR — SCORE SETORIAL (V2) + CARRY_SCORE DIÁRIO ⚠️ PRONTO, TESTADO, MAS **NÃO NO AR** (push bloqueado)
+Bloco pós-estreia agendado pra 20h58 BRT (mesmo trigger que este roadmap já
+citava havia dias). Antes de codar, verifiquei ao vivo a 1ª rodada do
+motor (20h30-35 BRT) e reconferi as migrações direto no banco:
+
+- **Estreia (20h30 BRT) confirmada boa:** `/ranking` mostra Valuation
+  preenchido e confiança "alta" em todos os 11 tickers com tese; fundamentos
+  de WEGE3 já usam competência 2026-06-30 (2T26, `cvm_itr`) — o
+  fundamentos_sync funcionou; painel Técnico de WEGE3 mostra 63 pregões
+  reais coletados (05/05 a 03/08); a coluna "Dia" da home (`Universo por
+  nota`) está com variação percentual real, não "—"; **nenhum gatilho
+  disparou** nesta rodada (0 linhas em `eventos_tese` desde 19h30 BRT) —
+  checado por SQL direto, não assumido.
+- **Migrações 009-013:** já estavam TODAS aplicadas (confirmado por SQL:
+  `carry_score` existe — 0 linhas, esperado, pois nada escrevia nela ainda
+  —, `fluxo_caixa` 243 linhas, `macro_focus` 640 linhas, `versao_algoritmo`
+  versao=2 existe, 40 empresas com `modelo_analise`). Não precisei aplicar
+  nada — o roadmap já registrava isso corretamente de sessões anteriores.
+
+**O que mudou no código** (`src/app/api/teses/avaliar/route.ts`, a rota
+que grava o SCORE OFICIAL imutável):
+1. Troca `calcularScore` (genérico) por `calcularScorePorModelo` (réguas
+   por modelo de negócio — ROE em vez de ROIC pra banco/seguradora,
+   aviso de ciclo pra commodities/construção) — mas só liga se a linha
+   `versao=2` existir de fato em `versao_algoritmo` no banco (checado em
+   runtime a cada execução, não hardcoded); senão mantém v1 e registra o
+   motivo no log/resposta. `versao` gravada em `scores` passa a ser
+   dinâmica (1 ou 2) em vez de sempre 1.
+2. Passa a gravar `carry_score` diário — tabela existia desde a migração
+   009 mas nenhuma rota nunca escrevia nela. Monta
+   `dividendosJcpLtm`/`caixaOperacionalLtm`/`capexLtm` a partir de
+   `fluxo_caixa` via `ltmCampo` (mesma regra de "12m acumulados" já usada
+   em `comparar/page.tsx` e `compounder-dados.ts` — nada reinventado).
+   Roda `escadaCarry()` e grava o degrau mais alto calculável (Cash >
+   Growth > Floor); o Floor sempre tem resultado (mesmo com carrego null
+   e explicação de pendência por escrito), então nunca fica sem nada.
+3. `fluxo_caixa.json` e `macro_focus.json`: **já estavam sincronizando**
+   na rota de coleta (confirmado lendo o código-fonte, não pela memória do
+   roadmap) — não havia nada pendente aqui, diferente do que a instrução
+   original presumia.
+
+**Verificação feita:** `npm run test` (186/186) e `npm run build`
+(Next.js roda o typecheck completo do TypeScript dentro do build) — os
+dois limpos. Commit local `b3e3fce` feito com a mensagem técnica completa.
+
+**⚠️ PUSH BLOQUEADO — decisão do Carlos necessária.** `git push origin
+main` foi negado pelo classificador de segurança desta sessão automática
+("Permission for this action was denied by the Claude Code auto mode
+classifier"), consistentemente em 2 tentativas — não é falha transitória
+de rede. Interpretação: é um bloqueio de segurança pensado pra sessão
+rodando sozinha à noite, tocando a rota mais sensível do sistema (grava
+nota oficial imutável), sem ninguém olhando em tempo real. Não tentei
+contornar (ex.: outra ferramenta de push) — a instrução explícita nesse
+caso é parar e perguntar.
+
+**Consequência prática:** nada do que está descrito acima está em
+produção ainda. O código v1 antigo (`calcularScore`, sempre versao=1,
+sem `carry_score`) continua rodando. A próxima rodada automática do cron
+(hoje, 03/08, já rodou às 20h30 BRT — usou a versão ANTIGA) só vai usar o
+código novo depois que o push acontecer.
+
+**Decidi não forçar um disparo manual da rota mesmo se o push tivesse
+passado:** não tenho o `CRON_SECRET` neste ambiente (confirmado — não
+está no `.env.local` nem no shell), e mesmo que tivesse, forçar agora
+criaria DUAS linhas de score/carry pro mesmo dia (v1 de 20h30 + v2 se eu
+forçasse depois) — isso não existe em nenhum outro dia do histórico e
+criaria ambiguidade em qualquer tela que lê "a nota mais recente" sem
+desempatar por versão. Mais seguro deixar a próxima rodada de cron
+(natural, dia seguinte) ser a primeira a gravar v2/carry_score.
+
+**Próximo passo concreto: preciso que você autorize o push.** Se topar,
+me avise que eu tento de novo (pode ser que uma sessão comigo presente
+em tempo real passe pelo classificador onde a autônoma não passou); ou,
+se preferir, você mesmo roda `git push origin main` a partir do commit
+`b3e3fce` já pronto no repositório local desta sessão.
 
 ## NOVO (03/08 ~22h05): GRÁFICO DE PATRIMÔNIO — LINHAS DE CDI E IPCA SUMIDAS, DOIS BUGS DISTINTOS ENCONTRADOS E CORRIGIDOS ✅ NO AR
 Carlos reportou: "faltando a linha do CDI e a linha do ibov no gráfico".
