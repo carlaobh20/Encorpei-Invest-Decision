@@ -7,53 +7,60 @@ import { calcularRadar, candidatas } from "@/lib/radar";
 import { consolidarCarteira, type Posicao } from "@/lib/carteira";
 import { calcularPatrimonio } from "@/lib/patrimonio-dados";
 import { calcularTechnicals } from "@/lib/technical-dados";
-import { calcularConfluencias } from "@/lib/confluencia-dados";
 import { calcularCompounders } from "@/lib/compounder-dados";
+import { montarDecisions } from "@/lib/decision-dados";
+import type { Decision } from "@/lib/decision-object";
+import { montarPortfolioFitCarteira } from "@/lib/portfolio-fit-dados";
+import type { ResultadoPortfolioFit } from "@/lib/portfolio-fit";
+import { montarStatusTeses } from "@/lib/thesis-status-dados";
+import { ROTULO_STATUS_DERIVADO, type PerfilTese, type StatusDerivadoTese } from "@/lib/thesis-engine";
+import { montarSaudeCarteiraV2, type SaudeCarteiraV2 } from "@/lib/dash-agregados";
 import {
-  calcularSaudeCarteira,
-  confluenciaMediaPonderada,
-  montarLinhasSaude,
-} from "@/lib/portfolio-health";
+  mediaSetor,
+  compararComSetor,
+  fraseCarryComContexto,
+  fraseConfluenceComContexto,
+  type ComparacaoSetorial,
+} from "@/lib/dash-narrativa";
+import {
+  classificarSeveridadeAlerta,
+  ordenarPorSeveridade,
+  contarPorSeveridade,
+  ROTULO_SEVERIDADE,
+  type SeveridadeAlerta,
+  type TipoEventoAlerta,
+} from "@/lib/alertas";
 import { gerarDecisionFeed, ROTULO_SUGESTAO, type DecisionFeedEntrada, type SugestaoFeed } from "@/lib/decision-feed";
-import type { Conviccao, ConfluenciaResultado } from "@/lib/confluencia";
+import type { Conviccao } from "@/lib/confluencia";
 import { ROTULO_SENSIBILIDADE } from "@/lib/compounder/sensibilidade-juros";
 import { corHeatmapRetorno } from "@/lib/heatmap";
 
 export const dynamic = "force-dynamic";
 
 /**
- * MEU DASH — reconstrução "terminal financeiro" (03/08/2026, a pedido
- * explícito do Carlos: não é ajuste de CSS, é nova arquitetura da
- * informação). A hierarquia numérica 01→07 anterior foi substituída por 4
- * linhas de densidade decrescente:
+ * MEU DASH — Sprint 2.1 (Bloco 2, 04/08/2026): primeira tela a consumir o
+ * Decision Object do Foundation (Master Engine + Confluence v2 + Carry
+ * v2/escada de 5 níveis + Portfolio Fit + Thesis Engine).
  *
- *   LINHA 1 — 10 stat cards compactos (≤90px), TODOS numa única linha em
- *             telas largas (xl:grid-cols-10): Patrimônio, Investido,
- *             Resultado, Alpha, Carry, Confluence, Sharpe, Drawdown, Caixa,
- *             Posições.
- *   LINHA 2 — gráfico "Performance" (70% da largura, ~280-320px de altura
- *             — ver nota em GraficoPatrimonio.tsx sobre o novo aspect
- *             ratio) + coluna lateral (30%) com Resumo IA, Alertas, Radar
- *             e Oportunidades, cada painel esticado (`flex-1`) para nunca
- *             sobrar vazio ao lado do gráfico.
- *   LINHA 3 — Minha Carteira resumida (~65%) + Saúde da Carteira resumida
- *             (~35%), ambas com link "ver completo →" para /carteira.
- *   LINHA 4 — Timeline (mudanças 48h) · Decision Feed + Diário · Cenário
- *             Macro (Focus/BCB) · Heatmap de retorno por posição — as
- *             quatro ocupando a largura inteira.
- *   ABAIXO  — Universo por nota (ranking completo) — não cabe na primeira
- *             dobra, fica disponível com rolagem (ver Shell rolagem).
+ * DECISÃO DE ESCOPO EXPLÍCITA (Opção A, escolhida pelo Carlos via pergunta
+ * direta): SÓ esta tela usa o Decision Object. `/carteira`, `/radar`,
+ * `/ranking` e a rota de cron `/api/teses/avaliar` continuam 100% em v1
+ * (confluencia.ts de 4 componentes, Carry de radar.ts) até serem migradas
+ * numa sprint futura — migração explicitamente registrada como pendência,
+ * não esquecida. CONSEQUÊNCIA VISÍVEL E ACEITA: o Carry e o Confluence
+ * mostrados aqui PODEM divergir numericamente do que `/carteira` mostra
+ * hoje para o mesmo ticker. Nunca escondida — cards e colunas afetados
+ * levam o rótulo "Foundation v2" e tooltip explicando a divergência.
  *
- * Regra inegociável (mantida do redesign anterior): todo número renderizado
+ * Toda conta pesada (Master Engine, Portfolio Fit, Thesis Engine, Saúde da
+ * Carteira v2) roda em src/lib/*-dados.ts / dash-agregados.ts — esta
+ * página só busca dado bruto que falta e desenha. Nenhum cálculo no
+ * frontend.
+ *
+ * Regra inegociável mantida do redesign anterior: todo número renderizado
  * vem de uma variável calculada a partir de dado real — nunca um valor
- * decorativo. "Caixa" não tem motor de rastreamento de dinheiro não
- * investido no sistema hoje — mostra "—" com o motivo, nunca um saldo
- * inventado. Nenhuma funcionalidade que já existia (Decision Feed, Radar,
- * Universo por nota, Diário, cenário macro, Mudanças 48h) foi removida —
- * só redistribuída na nova densidade. O único bloco propositalmente
- * descartado é o antigo placeholder "Calendário & IA explicativa": era só
- * um "em construção" sem dado nenhum atrás, e continua acessível pelo menu
- * lateral ("Em construção" → IA explicativa).
+ * decorativo; onde falta motor ou dado, "—" com o motivo (Caixa, Growth
+ * Médio).
  */
 
 type ScoreRow = {
@@ -63,13 +70,14 @@ type ScoreRow = {
   confianca: string;
   empresas: { nome: string } | null;
 };
-type TeseRow = { ticker: string; status: string };
+type TeseRow = { ticker: string; status: string; criado_em: string };
 type EventoRow = {
   id: number;
   tipo: string;
   explicacao: string;
   criado_em: string;
   teses: { ticker: string } | null;
+  gatilhos: { direcao: "positivo" | "negativo" } | null;
 };
 type PrecoRow = { ticker: string; data: string; fechamento: number };
 type DecisaoRow = { id: number; ticker: string; decisao: string; criado_em: string };
@@ -109,6 +117,25 @@ const CHIP_CONVICCAO: Record<Conviccao, string> = {
   baixa: "text-amber-300 bg-amber-500/10 border-amber-500/30",
   indefinida: "text-slate-500 bg-white/[0.03] border-white/10",
 };
+const COR_STATUS_DERIVADO: Record<StatusDerivadoTese, string> = {
+  construindo: "text-slate-400 bg-white/[0.03] border-white/10",
+  confirmada: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  fortalecendo: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+  enfraquecendo: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+  quebrada: "text-red-300 bg-red-500/10 border-red-500/30",
+  invalida: "text-red-300 bg-red-500/10 border-red-500/30",
+};
+const COR_SEVERIDADE: Record<SeveridadeAlerta, string> = {
+  critico: "text-red-300 bg-red-500/10 border-red-500/30",
+  importante: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+  informativo: "text-slate-500 bg-white/[0.03] border-white/10",
+};
+const ROTULO_LIQUIDEZ: Record<"alta" | "media" | "baixa", string> = {
+  alta: "Alta", media: "Média", baixa: "Baixa",
+};
+const COR_LIQUIDEZ: Record<"alta" | "media" | "baixa", string> = {
+  alta: "text-emerald-300", media: "text-sky-300", baixa: "text-amber-300",
+};
 
 function corNota(n: number): string {
   if (n >= 80) return "text-emerald-300";
@@ -134,8 +161,17 @@ const corAlpha = (v: number | null) =>
   v === null ? "text-slate-600" : v >= 0 ? "text-emerald-400" : "text-red-400";
 const corResultado = (v: number | null) =>
   v === null ? "text-slate-500" : v >= 0 ? "text-emerald-300" : "text-red-300";
+const preco2 = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-/** Card compacto da Linha 1 — altura fixa (84px, dentro do teto de 90px pedido), corte honesto embutido via "—". */
+/** Seta de comparação setorial (dash-narrativa.ts) — ▲/▼/≈, nunca cor sem explicação (title fica na célula-mãe). */
+function SetaComparacao({ comparacao }: { comparacao: ComparacaoSetorial }) {
+  if (comparacao === "acima") return <span className="ml-1 text-emerald-400">▲</span>;
+  if (comparacao === "abaixo") return <span className="ml-1 text-red-400">▼</span>;
+  if (comparacao === "na_media") return <span className="ml-1 text-slate-500">≈</span>;
+  return null;
+}
+
+/** Card compacto da Barra Superior — altura fixa (84px, dentro do teto de 90px pedido), corte honesto embutido via "—". */
 function MiniStat({
   rotulo, valor, cor = "text-slate-100", nota, titulo,
 }: { rotulo: string; valor: string; cor?: string; nota?: string; titulo?: string }) {
@@ -174,10 +210,10 @@ function Bloco({
 
 /** Stat pequena reusada dentro de Blocos (Saúde da Carteira, Macro) — sem altura fixa, grid 2 colunas. */
 function StatMini({
-  rotulo, valor, cor = "text-slate-100", nota,
-}: { rotulo: string; valor: string; cor?: string; nota?: string }) {
+  rotulo, valor, cor = "text-slate-100", nota, titulo,
+}: { rotulo: string; valor: string; cor?: string; nota?: string; titulo?: string }) {
   return (
-    <div>
+    <div title={titulo}>
       <p className="truncate text-[8.5px] uppercase tracking-wider text-slate-500">{rotulo}</p>
       <p className={`truncate font-mono text-[13px] font-bold ${cor}`}>{valor}</p>
       {nota && <p className="truncate text-[8.5px] leading-snug text-slate-600">{nota}</p>}
@@ -185,7 +221,7 @@ function StatMini({
   );
 }
 
-/** Trio de números pequenos (gatilhos/mudanças/em revisão) — Linha 2, painel Alertas. */
+/** Trio de números pequenos (severidade de alertas) — Linha 2, painel Alertas. */
 function MiniNum({ rotulo, valor, alerta }: { rotulo: string; valor: number; alerta?: boolean }) {
   return (
     <div>
@@ -218,10 +254,10 @@ export default async function DecisionCenter() {
       .select("ticker, data, score_final, confianca, empresas(nome)")
       .order("data", { ascending: false })
       .limit(200),
-    supabase.from("teses").select("ticker, status").eq("ativa", true),
+    supabase.from("teses").select("ticker, status, criado_em").eq("ativa", true),
     supabase
       .from("eventos_tese")
-      .select("id, tipo, explicacao, criado_em, teses(ticker)")
+      .select("id, tipo, explicacao, criado_em, teses(ticker), gatilhos(direcao)")
       .gte("criado_em", desde48h)
       .order("criado_em", { ascending: false })
       .limit(12),
@@ -263,10 +299,9 @@ export default async function DecisionCenter() {
     }
   }
   ranking.sort((a, b) => b.score_final - a.score_final);
-  const notaPorTicker = new Map<string, number>(ranking.map((r) => [r.ticker, r.score_final]));
-  const statusPorTicker = new Map(
-    ((tesesRaw as TeseRow[]) ?? []).map((t) => [t.ticker, t.status])
-  );
+  const tesesLinhas = (tesesRaw as TeseRow[]) ?? [];
+  const statusPorTicker = new Map(tesesLinhas.map((t) => [t.ticker, t.status]));
+  const criadoEmPorTicker = new Map(tesesLinhas.map((t) => [t.ticker, t.criado_em]));
   const emRevisao = ranking.filter((r) => statusPorTicker.get(r.ticker) === "em_revisao").length;
 
   // ---------- preços (série p/ sparkline + variação do dia) ----------
@@ -293,21 +328,49 @@ export default async function DecisionCenter() {
   // Método e limitações documentados em src/lib/patrimonio.ts.
   const patrimonio = await calcularPatrimonio(supabase);
 
-  // ---------- Decision Feed + Confluence/Saúde da carteira ----------
+  // ---------- Decision Object (Foundation v4, Opção A — só esta tela) ----------
   let decisionFeed: ReturnType<typeof gerarDecisionFeed> = [];
-  let confluenciaCarteira: ReturnType<typeof confluenciaMediaPonderada> | null = null;
-  let confluenciaPorTicker = new Map<string, ConfluenciaResultado>();
-  let saude: ReturnType<typeof calcularSaudeCarteira> | null = null;
+  let decisions = new Map<string, Decision>();
+  let portfolioFitPorTicker = new Map<string, ResultadoPortfolioFit>();
+  let statusTesesPorTicker = new Map<string, PerfilTese>();
+  let saudeV2: SaudeCarteiraV2 | null = null;
+
   if (carteira && carteira.linhas.length > 0) {
-    const [technicalLinhas, confluenciaLinhas, compounderLinhas] = await Promise.all([
+    const [technicalLinhas, compounderLinhas] = await Promise.all([
       calcularTechnicals(supabase),
-      calcularConfluencias(supabase),
       calcularCompounders(supabase),
     ]);
-    const technicalPorTicker = new Map(technicalLinhas.map((t) => [t.ticker, t.resultado]));
-    confluenciaPorTicker = new Map(confluenciaLinhas.map((c) => [c.ticker, c.resultado]));
+    // mapa "achatado" (só o resultado) — formato que o Decision Feed (v1, decision-feed.ts) já espera
+    const technicalResultadoPorTicker = new Map(technicalLinhas.map((t) => [t.ticker, t.resultado]));
+    // mapa "cheio" — formato que montarDecisions (decision-dados.ts) espera
+    const technicalPorTicker = new Map(technicalLinhas.map((t) => [t.ticker, t]));
+    const compounderPorTicker = new Map(compounderLinhas.map((c) => [c.ticker, c]));
+    const setorPorTicker = new Map(radarLinhas.map((r) => [r.ticker, r.setor]));
+    // fundamentosScore/fundamentosComponentes = a mesma nota oficial que o Radar já calcula
+    // (calcularScorePorModelo) — nenhuma conta nova, só reaproveitada aqui.
+    const fundamentosPorTicker = new Map(radarLinhas.map((r) => [r.ticker, { nota: r.nota, componentes: r.componentes }]));
+    // universo inteiro (não só a carteira) — necessário pra "média do setor hoje"
+    // (dash-narrativa.ts) ter comparação honesta além das próprias posições.
+    const universoTickers = radarLinhas.map((r) => r.ticker);
+    const geradoEm = new Date().toISOString();
+
+    const decisionsResultado = await montarDecisions(
+      supabase, universoTickers, fundamentosPorTicker, compounderPorTicker, technicalPorTicker, geradoEm
+    );
+    decisions = decisionsResultado.porTicker;
+
+    const posicoesFit = carteira.linhas
+      .filter((l): l is typeof l & { peso: number } => l.peso !== null)
+      .map((l) => ({ ticker: l.ticker, peso: l.peso }));
+    const fitResultado = await montarPortfolioFitCarteira(supabase, posicoesFit, decisions, compounderPorTicker, setorPorTicker);
+    portfolioFitPorTicker = fitResultado.porTicker;
+
+    statusTesesPorTicker = await montarStatusTeses(supabase, carteira.linhas.map((l) => l.ticker), decisions, geradoEm);
+
+    saudeV2 = montarSaudeCarteiraV2(carteira.linhas, radarLinhas, compounderLinhas, decisions, fitResultado.volumeMedioReaisPorTicker);
+
     const entradasFeed: DecisionFeedEntrada[] = carteira.linhas.map((l) => {
-      const tec = technicalPorTicker.get(l.ticker);
+      const tec = technicalResultadoPorTicker.get(l.ticker);
       const timing = tec?.timing ?? null;
       const timingFavoravel =
         timing === "excelente" || timing === "bom"
@@ -325,16 +388,21 @@ export default async function DecisionCenter() {
       };
     });
     decisionFeed = gerarDecisionFeed(entradasFeed);
-    // Confluence Score médio da carteira — ponderado pelo peso de cada
-    // posição no valor atual, só entram tickers com score calculável.
-    confluenciaCarteira = confluenciaMediaPonderada(
-      carteira.linhas.map((l) => ({ peso: l.peso ?? 0, score: confluenciaPorTicker.get(l.ticker)?.score ?? null }))
-    );
-    // Saúde da Carteira (Carry médio, Concentração, ROIC, Valuation,
-    // Sensibilidade à Selic) — assembly compartilhado com /carteira, ver
-    // montarLinhasSaude em src/lib/portfolio-health.ts.
-    const linhasSaude = montarLinhasSaude(carteira.linhas, radarLinhas, compounderLinhas);
-    saude = linhasSaude.length > 0 ? calcularSaudeCarteira(linhasSaude) : null;
+  }
+
+  // Comparadores setoriais (dash-narrativa.ts) — "hoje", nunca "histórica"; só existem tickers com Decision.
+  const linhasParaMediaSetor = Array.from(decisions.values()).map((d) => ({ ticker: d.ticker, setor: d.setor }));
+  function carryComparacao(ticker: string): { media: number | null; comparacao: ComparacaoSetorial } {
+    const d = decisions.get(ticker);
+    if (!d) return { media: null, comparacao: "indisponivel" };
+    const media = mediaSetor(ticker, d.setor, linhasParaMediaSetor, (l) => decisions.get(l.ticker)?.carry ?? null);
+    return { media, comparacao: compararComSetor(d.carry, media) };
+  }
+  function confluenceComparacao(ticker: string): { media: number | null; comparacao: ComparacaoSetorial } {
+    const d = decisions.get(ticker);
+    if (!d) return { media: null, comparacao: "indisponivel" };
+    const media = mediaSetor(ticker, d.setor, linhasParaMediaSetor, (l) => decisions.get(l.ticker)?.confluence ?? null);
+    return { media, comparacao: compararComSetor(d.confluence, media) };
   }
 
   // ---------- hero / eventos ----------
@@ -344,6 +412,24 @@ export default async function DecisionCenter() {
   const gat24 = ev24.filter((e) => e.tipo === "gatilho_disparado").length;
   const mud24 = ev24.filter((e) => e.tipo === "mudanca_status").length;
   const precisaAgir = gat24 + mud24 > 0;
+
+  // ---------- Alertas com severidade (Crítico/Importante/Informativo) ----------
+  // Reaproveita sinais que já existem (FDIE do Decision Object, Thesis Engine, direção do gatilho)
+  // — src/lib/alertas.ts só prioriza, não inventa risco novo.
+  const TIPOS_ALERTA = new Set(["gatilho_disparado", "mudanca_status", "criacao", "revisao"]);
+  const alertasClassificados = eventos.map((e) => {
+    const ticker = e.teses?.ticker ?? null;
+    const d = ticker ? decisions.get(ticker) : undefined;
+    const fdieCritico = d ? d.fdie.critico > 0 : false;
+    const thesisStatus = ticker ? statusTesesPorTicker.get(ticker)?.thesisStatus ?? null : null;
+    const tipo = (TIPOS_ALERTA.has(e.tipo) ? e.tipo : "revisao") as TipoEventoAlerta;
+    const { severidade, motivo } = classificarSeveridadeAlerta({
+      tipo, gatilhoDirecao: e.gatilhos?.direcao ?? null, fdieCritico, thesisStatus,
+    });
+    return { evento: e, severidade, motivo };
+  });
+  const alertasOrdenados = ordenarPorSeveridade(alertasClassificados);
+  const contagemSeveridade = contarPorSeveridade(alertasClassificados);
 
   const porData = new Map<string, number[]>();
   for (const s of (scoresRaw as unknown as ScoreRow[]) ?? []) {
@@ -397,15 +483,43 @@ export default async function DecisionCenter() {
     );
   }
 
-  // valores prontos pros 10 cards da Linha 1 — cada um já é uma variável
-  // calculada de dado real; onde falta dado, "—" com o motivo (nunca
-  // decorativo). "Caixa": o sistema não tem ledger de dinheiro não
-  // investido, só posições em ações — corte honesto explícito.
-  const posicoesTxt = posicoes === null ? "—" : String(carteira ? carteira.linhas.length : 0);
+  // Hero Executivo — uma frase contextualizada de Carry pra maior posição (nunca "Carry: X%" solto).
+  const maiorPosicao = carteira && carteira.linhas.length > 0
+    ? [...carteira.linhas].sort((a, b) => (b.peso ?? 0) - (a.peso ?? 0))[0]
+    : null;
+  let fraseDestaqueCarry: string | null = null;
+  if (maiorPosicao) {
+    const d = decisions.get(maiorPosicao.ticker);
+    if (d) {
+      const { comparacao } = carryComparacao(maiorPosicao.ticker);
+      fraseDestaqueCarry = `${maiorPosicao.ticker} (maior posição): ${fraseCarryComContexto(d.carry, comparacao)}`;
+    }
+  }
 
   return (
     <Shell ativo="/" titulo="Meu Dash" subtitulo={hoje} rolagem>
-      {/* ================= LINHA 1 — 10 cards compactos, ≤90px, uma única linha em telas largas ================= */}
+      {/* ================= HERO EXECUTIVO ================= */}
+      <div className="rounded-[18px] border border-white/[0.06] bg-gradient-to-br from-white/[0.05] to-transparent p-5">
+        <p className="text-[11px] text-slate-500">{saudacao}, Carlos · {hoje}</p>
+        <div className="mt-1 flex flex-wrap items-baseline gap-3">
+          <h1 className="font-mono text-[32px] font-bold leading-none text-slate-50">
+            {carteira && carteira.valorAtual !== null ? brl(carteira.valorAtual) : "—"}
+          </h1>
+          {carteira && carteira.resultado !== null && carteira.resultadoPct !== null && (
+            <span className={`font-mono text-[17px] font-semibold ${corResultado(carteira.resultado)}`}>
+              {pctSinal(carteira.resultadoPct)}
+            </span>
+          )}
+        </div>
+        <p className={`mt-2 max-w-3xl text-[13px] leading-relaxed ${precisaAgir ? "text-amber-200" : "text-slate-300"}`}>
+          {frases[0]}
+        </p>
+        {fraseDestaqueCarry && (
+          <p className="mt-1 max-w-3xl text-[11px] leading-relaxed text-slate-500">{fraseDestaqueCarry}</p>
+        )}
+      </div>
+
+      {/* ================= BARRA SUPERIOR — 10 cards compactos, ≤90px ================= */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-10">
         <MiniStat
           rotulo="Patrimônio"
@@ -418,11 +532,21 @@ export default async function DecisionCenter() {
           titulo={carteira ? brl(carteira.valorInvestido) : "Sem posições registradas"}
         />
         <MiniStat
-          rotulo="Resultado"
+          rotulo="Atual"
+          valor={carteira && carteira.valorAtual !== null ? brlCompacto(carteira.valorAtual) : "—"}
+          titulo="Mesmo valor do card Patrimônio — o sistema não separa caixa/outros ativos de ações hoje, corte honesto explícito."
+        />
+        <MiniStat
+          rotulo="Lucro"
           valor={carteira && carteira.resultado !== null ? brlCompacto(carteira.resultado) : "—"}
           cor={carteira && carteira.resultado !== null ? corResultado(carteira.resultado) : "text-slate-600"}
-          nota={carteira && carteira.resultadoPct !== null ? pctSinal(carteira.resultadoPct) : undefined}
           titulo={carteira && carteira.resultado !== null ? brl(carteira.resultado) : "Sem preço atual de alguma posição"}
+        />
+        <MiniStat
+          rotulo="Rentabilidade"
+          valor={carteira && carteira.resultadoPct !== null ? pctSinal(carteira.resultadoPct) : "—"}
+          cor={carteira && carteira.resultado !== null ? corResultado(carteira.resultado) : "text-slate-600"}
+          titulo="Resultado ÷ valor investido"
         />
         <MiniStat
           rotulo="Alpha vs. CDI"
@@ -432,14 +556,16 @@ export default async function DecisionCenter() {
         />
         <MiniStat
           rotulo="Carry médio"
-          valor={saude && saude.carryMedioPonderado !== null ? `IPCA+${(saude.carryMedioPonderado * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}
-          titulo="Carry real médio ponderado pelo peso na carteira"
+          valor={saudeV2 && saudeV2.saude.carryMedioPonderado !== null ? `IPCA+${(saudeV2.saude.carryMedioPonderado * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}
+          nota="Foundation v2"
+          titulo="Carry do Decision Object (escada de 5 níveis) — pode divergir do Carry mostrado em /carteira (v1) até essa tela também migrar. Divergência registrada em roadmap/status-execucao.md."
         />
         <MiniStat
           rotulo="Confluence"
-          valor={confluenciaCarteira && confluenciaCarteira.valor !== null ? Math.round(confluenciaCarteira.valor).toString() : "—"}
-          cor={confluenciaCarteira && confluenciaCarteira.valor !== null ? COR_CONVICCAO[confluenciaCarteira.conviccao] : "text-slate-600"}
-          nota={confluenciaCarteira ? `cobertura ${confluenciaCarteira.cobertura}/${confluenciaCarteira.total}` : undefined}
+          valor={saudeV2 && saudeV2.confluenceV2.valor !== null ? Math.round(saudeV2.confluenceV2.valor).toString() : "—"}
+          cor={saudeV2 && saudeV2.confluenceV2.valor !== null ? COR_CONVICCAO[saudeV2.confluenceV2.conviccao] : "text-slate-600"}
+          nota="Foundation v2 · 8 comp."
+          titulo="Confluence Score de 8 componentes (Foundation v2) — pode divergir do Confluence de /carteira (4 componentes, v1) até essa tela também migrar."
         />
         <MiniStat
           rotulo="Sharpe"
@@ -452,14 +578,6 @@ export default async function DecisionCenter() {
           cor={patrimonio && patrimonio.resultado.drawdownMaximo !== null ? "text-red-400" : "text-slate-600"}
           titulo="Maior queda pico-a-vale da série do patrimônio"
         />
-        <MiniStat
-          rotulo="Caixa"
-          valor="—"
-          cor="text-slate-600"
-          nota="sem rastreio ainda"
-          titulo="O sistema não rastreia dinheiro não investido — só posições em ações. Corte honesto: nunca um saldo inventado."
-        />
-        <MiniStat rotulo="Posições" valor={posicoesTxt} titulo="Quantidade de posições reais registradas" />
       </div>
 
       {/* ================= LINHA 2 — gráfico (70%) + Resumo IA / Alertas / Radar / Oportunidades (30%) ================= */}
@@ -509,14 +627,21 @@ export default async function DecisionCenter() {
 
           <Bloco titulo="Alertas" acao={{ href: "/replay", rotulo: "replay" }} className="flex-1">
             <div className="flex gap-4">
-              <MiniNum rotulo="Gatilhos 24h" valor={gat24} alerta={gat24 > 0} />
-              <MiniNum rotulo="Mudanças 24h" valor={mud24} alerta={mud24 > 0} />
-              <MiniNum rotulo="Em revisão" valor={emRevisao} alerta={emRevisao > 0} />
+              <MiniNum rotulo="Crítico" valor={contagemSeveridade.critico} alerta={contagemSeveridade.critico > 0} />
+              <MiniNum rotulo="Importante" valor={contagemSeveridade.importante} alerta={contagemSeveridade.importante > 0} />
+              <MiniNum rotulo="Informativo" valor={contagemSeveridade.informativo} />
             </div>
-            {eventos.length > 0 ? (
-              <p className="mt-1.5 line-clamp-2 text-[10px] leading-snug text-slate-400">
-                <span className="font-mono text-sky-400/90">{eventos[0].teses?.ticker}</span> · {eventos[0].explicacao}
-              </p>
+            {alertasOrdenados.length > 0 ? (
+              <div className="mt-1.5 space-y-1">
+                {alertasOrdenados.slice(0, 3).map((a) => (
+                  <p key={a.evento.id} className="line-clamp-1 text-[10px] leading-snug text-slate-400" title={a.motivo}>
+                    <span className={`mr-1 rounded-full border px-1 text-[8px] ${COR_SEVERIDADE[a.severidade]}`}>
+                      {ROTULO_SEVERIDADE[a.severidade]}
+                    </span>
+                    <span className="font-mono text-sky-400/90">{a.evento.teses?.ticker}</span> · {a.evento.explicacao}
+                  </p>
+                ))}
+              </div>
             ) : (
               <p className="mt-1.5 text-[10px] text-slate-500">Nada mudou nas últimas 48h.</p>
             )}
@@ -569,8 +694,8 @@ export default async function DecisionCenter() {
       </div>
 
       {/* ================= LINHA 3 — Minha Carteira (~65%) + Saúde da Carteira (~35%) =================
-          Versão RESUMIDA da tabela: sem Qtd/Preço médio/Valor investido/Valor
-          atual (já cobertos pelos cards da Linha 1) e SEM os botões
+          Versão RESUMIDA da tabela: sem Qtd/Valor investido/Valor atual em R$
+          (já cobertos pelos cards da Barra Superior) e SEM os botões
           "editar"/"excluir" — decisão deliberada: AcoesPosicao chama um
           server action com checagem de usuário logado e acesso admin que
           hoje só existe em src/app/carteira/page.tsx; duplicá-lo aqui (ou
@@ -579,7 +704,7 @@ export default async function DecisionCenter() {
           link "carteira completa →" é o caminho real para editar/excluir. */}
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
         <Bloco
-          titulo={`Minha Carteira${carteira ? ` (${carteira.linhas.length})` : ""}`}
+          titulo={`Minha Carteira${carteira ? ` (${carteira.linhas.length})` : ""} · Foundation v2`}
           acao={{ href: "/carteira", rotulo: "carteira completa" }}
           className="xl:col-span-2"
         >
@@ -590,15 +715,31 @@ export default async function DecisionCenter() {
                   <tr className="text-left text-[9px] uppercase tracking-wider text-slate-600">
                     <th className="py-1 pr-2">Empresa</th>
                     <th className="py-1 pr-2 text-right">Peso</th>
-                    <th className="py-1 pr-2 text-right">Resultado</th>
-                    <th className="py-1 pr-2 text-right">Nota</th>
-                    <th className="py-1 text-right">Confluence</th>
+                    <th className="py-1 pr-2 text-right">Preço médio</th>
+                    <th className="py-1 pr-2 text-right">Cotação</th>
+                    <th className="py-1 pr-2 text-right">Rentab.</th>
+                    <th className="py-1 pr-2 text-right">Carry</th>
+                    <th className="py-1 pr-2 text-right">Confluence</th>
+                    <th className="py-1 pr-2 text-right">Fit</th>
+                    <th className="py-1 pr-2">Status da tese</th>
+                    <th className="py-1 text-right">Revisão</th>
                   </tr>
                 </thead>
                 <tbody>
                   {carteira.linhas.map((l) => {
-                    const notaLinha = notaPorTicker.get(l.ticker);
-                    const conf = confluenciaPorTicker.get(l.ticker);
+                    const d = decisions.get(l.ticker);
+                    const perfil = statusTesesPorTicker.get(l.ticker);
+                    const fit = portfolioFitPorTicker.get(l.ticker);
+                    const { comparacao: compCarry } = carryComparacao(l.ticker);
+                    const { comparacao: compConf } = confluenceComparacao(l.ticker);
+                    const revisaoEm = criadoEmPorTicker.get(l.ticker);
+                    const statusLegado = statusPorTicker.get(l.ticker);
+                    const statusTxt = perfil ? ROTULO_STATUS_DERIVADO[perfil.thesisStatus] : statusLegado ? STATUS_TXT[statusLegado] : null;
+                    const statusCor = perfil
+                      ? COR_STATUS_DERIVADO[perfil.thesisStatus]
+                      : statusLegado
+                      ? STATUS_CHIP[statusLegado]
+                      : "text-slate-600 bg-white/[0.03] border-white/10";
                     return (
                       <tr key={l.ticker} className="border-t border-white/5 hover:bg-white/[0.03]">
                         <td className="py-1 pr-2">
@@ -615,20 +756,54 @@ export default async function DecisionCenter() {
                           )}
                         </td>
                         <td className="py-1 pr-2 text-right font-mono text-slate-300">{pct(l.peso)}</td>
+                        <td className="py-1 pr-2 text-right font-mono text-slate-500">{preco2(l.precoMedio)}</td>
+                        <td className="py-1 pr-2 text-right font-mono text-slate-300">
+                          {l.precoAtual !== null ? preco2(l.precoAtual) : "—"}
+                        </td>
                         <td className={`py-1 pr-2 text-right font-mono ${corResultado(l.resultado)}`}>
                           {l.resultado !== null ? pct(l.resultadoPct) : "—"}
                         </td>
-                        <td className="py-1 pr-2 text-right font-mono text-slate-300">
-                          {notaLinha !== undefined ? Math.round(notaLinha) : "—"}
+                        <td
+                          className="py-1 pr-2 text-right font-mono text-slate-300"
+                          title={d ? fraseCarryComContexto(d.carry, compCarry) : "Sem Decision Object calculável para este ticker."}
+                        >
+                          {d && d.carry !== null ? (
+                            <>
+                              IPCA+{(d.carry * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                              <SetaComparacao comparacao={compCarry} />
+                            </>
+                          ) : (
+                            "—"
+                          )}
                         </td>
-                        <td className="py-1 text-right">
-                          {conf && conf.score !== null ? (
-                            <span className={`rounded-full border px-1.5 py-0.5 text-[9.5px] font-mono ${CHIP_CONVICCAO[conf.conviccao]}`}>
-                              {conf.score}
+                        <td
+                          className="py-1 pr-2 text-right"
+                          title={d ? fraseConfluenceComContexto(d.confluence, compConf) : "Sem Decision Object calculável para este ticker."}
+                        >
+                          {d && d.confluence !== null ? (
+                            <span className={`rounded-full border px-1.5 py-0.5 text-[9.5px] font-mono ${CHIP_CONVICCAO[d.conviccao]}`}>
+                              {d.confluence}
+                              <SetaComparacao comparacao={compConf} />
                             </span>
                           ) : (
                             <span className="text-slate-600">—</span>
                           )}
+                        </td>
+                        <td
+                          className="py-1 pr-2 text-right font-mono text-slate-300"
+                          title={fit ? `Portfolio Fit — ${fit.componentesDisponiveis}/${fit.componentesTotal} componentes calculáveis (${fit.metodo}).` : "Sem Portfolio Fit calculável."}
+                        >
+                          {fit && fit.scoreEncaixe !== null ? Math.round(fit.scoreEncaixe) : "—"}
+                        </td>
+                        <td className="py-1 pr-2">
+                          {statusTxt ? (
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] ${statusCor}`}>{statusTxt}</span>
+                          ) : (
+                            <span className="text-slate-600">—</span>
+                          )}
+                        </td>
+                        <td className="py-1 text-right text-[10px] text-slate-500">
+                          {revisaoEm ? fmtHora(revisaoEm) : "—"}
                         </td>
                       </tr>
                     );
@@ -643,7 +818,7 @@ export default async function DecisionCenter() {
               ) : (
                 <>
                   Registre suas posições reais (quantidade e preço médio) e este bloco passa a mostrar peso,
-                  resultado, nota e Confluence por posição.{" "}
+                  resultado, Carry, Confluence e Portfolio Fit por posição.{" "}
                   <Link href="/carteira" className="text-sky-400 hover:underline">registrar posições →</Link>
                 </>
               )}
@@ -651,40 +826,61 @@ export default async function DecisionCenter() {
           )}
         </Bloco>
 
-        <Bloco titulo="Saúde da Carteira" acao={{ href: "/carteira", rotulo: "ver completo" }} className="xl:col-span-1">
-          {saude ? (
+        <Bloco titulo="Saúde da Carteira · Foundation v2" acao={{ href: "/carteira", rotulo: "ver completo" }} className="xl:col-span-1">
+          {saudeV2 ? (
             <>
               <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
                 <StatMini
                   rotulo="Concentração"
-                  valor={ROTULO_CONCENTRACAO[saude.concentracaoRotulo]}
-                  cor={COR_CONCENTRACAO[saude.concentracaoRotulo]}
-                  nota={saude.maiorPosicao ? `maior: ${saude.maiorPosicao.ticker}` : undefined}
+                  valor={ROTULO_CONCENTRACAO[saudeV2.saude.concentracaoRotulo]}
+                  cor={COR_CONCENTRACAO[saudeV2.saude.concentracaoRotulo]}
+                  nota={saudeV2.saude.maiorPosicao ? `maior: ${saudeV2.saude.maiorPosicao.ticker}` : undefined}
                 />
                 <StatMini
-                  rotulo="Volatilidade"
-                  valor={
-                    patrimonio && patrimonio.resultado.volatilidadeAnualizada !== null
-                      ? `${(patrimonio.resultado.volatilidadeAnualizada * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-                      : "—"
-                  }
+                  rotulo="Diversificação"
+                  valor={`${saudeV2.saude.alocacaoPorModelo.length} modelo${saudeV2.saude.alocacaoPorModelo.length === 1 ? "" : "s"}`}
+                  nota="de negócio distintos"
                 />
-                <StatMini rotulo="ROIC médio" valor={pct(saude.roicMedioPonderado)} nota={`cobertura ${saude.cobertura.roic}/${saude.cobertura.total}`} />
-                <StatMini rotulo="Valuation médio" valor={pct(saude.earningsYieldMedioPonderado)} nota="lucro 12m ÷ valor de mercado" />
                 <StatMini
-                  rotulo="Sensib. Selic"
-                  valor={
-                    saude.sensibilidadeSelicMedia.categoria
-                      ? ROTULO_SENSIBILIDADE[saude.sensibilidadeSelicMedia.categoria]
-                      : "—"
-                  }
+                  rotulo="Carry médio"
+                  valor={saudeV2.saude.carryMedioPonderado !== null ? `IPCA+${(saudeV2.saude.carryMedioPonderado * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"}
+                  nota={`Foundation v2 · cobertura ${saudeV2.saude.cobertura.carry}/${saudeV2.saude.cobertura.total}`}
                 />
-                <StatMini rotulo="Posições" valor={String(saude.cobertura.total)} />
+                <StatMini
+                  rotulo="ROIC médio"
+                  valor={pct(saudeV2.saude.roicMedioPonderado)}
+                  nota={`cobertura ${saudeV2.saude.cobertura.roic}/${saudeV2.saude.cobertura.total}`}
+                />
+                <StatMini
+                  rotulo="Growth médio"
+                  valor="—"
+                  cor="text-slate-600"
+                  nota="sem motor real ainda"
+                  titulo="Decision.growth não tem motor real construído — corte honesto, nunca um número inventado."
+                />
+                <StatMini
+                  rotulo="Liquidez"
+                  valor={saudeV2.liquidez.rotulo ? ROTULO_LIQUIDEZ[saudeV2.liquidez.rotulo] : "—"}
+                  cor={saudeV2.liquidez.rotulo ? COR_LIQUIDEZ[saudeV2.liquidez.rotulo] : "text-slate-600"}
+                  nota={saudeV2.liquidez.valor !== null ? `~${brlCompacto(saudeV2.liquidez.valor)}/dia` : undefined}
+                  titulo="Volume financeiro médio ponderado, últimos ~30 pregões por posição. Limiares (alta ≥R$10mi/dia, baixa <R$1mi/dia) são convenção de mercado, não dado calculado."
+                />
+                <StatMini
+                  rotulo="Macro (Selic)"
+                  valor={saudeV2.saude.sensibilidadeSelicMedia.categoria ? ROTULO_SENSIBILIDADE[saudeV2.saude.sensibilidadeSelicMedia.categoria] : "—"}
+                  titulo={saudeV2.saude.sensibilidadeSelicMedia.explicacao}
+                />
+                <StatMini
+                  rotulo="Convicção"
+                  valor={saudeV2.confluenceV2.valor !== null ? Math.round(saudeV2.confluenceV2.valor).toString() : "—"}
+                  cor={saudeV2.confluenceV2.valor !== null ? COR_CONVICCAO[saudeV2.confluenceV2.conviccao] : "text-slate-600"}
+                  nota={`Confluence v2 · cobertura ${saudeV2.confluenceV2.cobertura}/${saudeV2.confluenceV2.total}`}
+                />
               </div>
-              {saude.alocacaoPorModelo.length > 0 && (
+              {saudeV2.saude.alocacaoPorModelo.length > 0 && (
                 <div className="mt-2.5 space-y-1 border-t border-white/5 pt-2">
                   <p className="text-[8.5px] uppercase tracking-wider text-slate-600">Modelo de negócio</p>
-                  {saude.alocacaoPorModelo.slice(0, 3).map((m) => (
+                  {saudeV2.saude.alocacaoPorModelo.slice(0, 3).map((m) => (
                     <div key={m.rotulo} className="flex items-center gap-1.5 text-[10px]">
                       <span className="w-20 shrink-0 truncate text-slate-400">{m.rotulo}</span>
                       <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/5">

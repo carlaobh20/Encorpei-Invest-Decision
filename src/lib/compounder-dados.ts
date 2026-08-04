@@ -21,6 +21,10 @@ export type LinhaCompounder = {
   resultado: CompounderResultado;
   sensibilidadeSelic: { categoria: CategoriaSensibilidade | null; explicacao: string };
   marketCap: number | null;
+  /** dívida líquida / patrimônio — já calculado aqui para sensibilidadeSelic; exposto para o Meu Dash (Foundation v4, Portfolio Fit) reaproveitar sem recalcular */
+  alavancagem: number | null;
+  /** 1 - payout (dividendos+JCP / lucro LTM) — idem, exposto para reaproveitamento externo */
+  retencao: number | null;
 };
 
 type Fund = {
@@ -182,6 +186,8 @@ export async function calcularCompounders(sb: SupabaseClient): Promise<LinhaComp
       resultado,
       sensibilidadeSelic,
       marketCap,
+      alavancagem,
+      retencao,
     });
   }
 
