@@ -1,5 +1,1 @@
-/home/runner/work/Encorpei-Invest-Decision/Encorpei-Invest-Decision/tools/coleta_ipe.py:101: UserWarning: This pattern is interpreted as a regular expression, and has match groups. To actually get the groups, use str.extract.
-  sel = util[util["NOME_N"].str.contains(padrao, regex=True, na=False)]
-/home/runner/work/Encorpei-Invest-Decision/Encorpei-Invest-Decision/tools/coleta_ipe.py:101: UserWarning: This pattern is interpreted as a regular expression, and has match groups. To actually get the groups, use str.extract.
-  sel = util[util["NOME_N"].str.contains(padrao, regex=True, na=False)]
-ok: 3511 comunicações de 38 empresas
+ok: 0 comunicações de 0 empresas
