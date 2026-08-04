@@ -7,6 +7,10 @@
     {
       "path": "/api/teses/avaliar",
       "schedule": "30 23 * * 1-5"
+    },
+    {
+      "path": "/api/market-scan/executar",
+      "schedule": "45 23 * * 1-5"
     }
   ]
 }

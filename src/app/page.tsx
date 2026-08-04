@@ -49,6 +49,10 @@ import { IntelligenceCapsuleCard } from "@/components/IntelligenceCapsuleCard";
 import { montarPortfolioOptimizer } from "@/lib/portfolio-optimizer";
 import { montarCapitalAllocationView } from "@/lib/capital-allocation-simulacao";
 import { SimuladorMeta } from "@/components/SimuladorMeta";
+import { detectarMudancaTese } from "@/lib/market-scan-change-detection";
+import { avaliarOportunidade, type NivelOportunidade } from "@/lib/opportunity-engine";
+
+const NIVEL_ORDEM: Record<NivelOportunidade, number> = { excepcional: 5, rara: 4, forte: 3, boa: 2, oportunidade: 1 };
 
 export const dynamic = "force-dynamic";
 
@@ -379,6 +383,8 @@ export default async function DecisionCenter() {
   // ---------- Wealth Intelligence Layer (Bloco 2, Sprint 2.9) ----------
   let portfolioOptimizer: ReturnType<typeof montarPortfolioOptimizer> | null = null;
   let capitalAllocation: ReturnType<typeof montarCapitalAllocationView> | null = null;
+  // ---------- Market Scan (Bloco 2, Sprint 2.10) ----------
+  let linhasComPesoGlobal: { ticker: string }[] = [];
 
   if (carteira && carteira.linhas.length > 0) {
     const [technicalLinhas, compounderLinhas] = await Promise.all([
@@ -417,6 +423,7 @@ export default async function DecisionCenter() {
     // ---------- Wealth Health (Seção 1) + Attribution (Seção 4) + Risco (Seção 5) + Aprendizados (Seção 8) ----------
     // Nenhum motor novo — só composição sobre saudeV2/decisions/portfolioFitPorTicker já calculados acima.
     const linhasComPeso = carteira.linhas.filter((l): l is typeof l & { peso: number } => l.peso !== null);
+    linhasComPesoGlobal = linhasComPeso;
 
     const qualityMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: decisions.get(l.ticker)?.quality ?? null })));
     const fitMedio = mediaPonderada(linhasComPeso.map((l) => ({ peso: l.peso, valor: portfolioFitPorTicker.get(l.ticker)?.scoreEncaixe ?? null })));
@@ -572,6 +579,40 @@ export default async function DecisionCenter() {
   });
   const alertasOrdenados = ordenarPorSeveridade(alertasClassificados);
   const contagemSeveridade = contarPorSeveridade(alertasClassificados);
+
+  // ---------- Market Scan (Bloco 2, Sprint 2.10) — Meu Dash mostra só 3+3+3 ----------
+  // "Nunca recalcula" — reaproveita `decisions` (universo, já montado acima),
+  // `ameacasCarteira` (Sprint 2.8) e os MESMOS eventos_tese que os Alertas já
+  // leem. Mudanças aqui cobrem só a dimensão com dado histórico real e
+  // barato disponível dentro do Meu Dash (tese, via eventos_tese) — Carry v1/
+  // ROIC-trend/snapshot v2 exigem as buscas mais amplas que só o cron
+  // `/api/market-scan/executar` faz; rodar tudo de novo aqui duplicaria
+  // trabalho caro a cada carregamento de página.
+  const eventosTeseParaScan = eventos
+    .filter((e) => e.teses?.ticker)
+    .map((e) => ({ ticker: e.teses!.ticker, tipo: e.tipo, criado_em: e.criado_em, descricao: e.explicacao }));
+  const oportunidadesMeuDash = linhasComPesoGlobal
+    .map((l) => {
+      const d = decisions.get(l.ticker);
+      if (!d) return null;
+      const mud = detectarMudancaTese(l.ticker, eventosTeseParaScan);
+      return avaliarOportunidade({
+        ticker: l.ticker,
+        confluence: d.confluence,
+        carry: d.carry,
+        riscoTexto: d.risk.motivo,
+        fdieCritico: d.fdie.critico > 0,
+        mudancasRecentes: mud ? [mud] : [],
+      });
+    })
+    .filter((o): o is NonNullable<typeof o> => o !== null)
+    .sort((a, b) => NIVEL_ORDEM[b.nivel!] - NIVEL_ORDEM[a.nivel!])
+    .slice(0, 3);
+  const riscosMeuDash = ameacasCarteira.slice(0, 3);
+  const mudancasMeuDash = linhasComPesoGlobal
+    .map((l) => detectarMudancaTese(l.ticker, eventosTeseParaScan))
+    .filter((m): m is NonNullable<typeof m> => m !== null)
+    .slice(0, 3);
 
   // ---------- Quick Actions (Seção 11, Sprint 2.8) ----------
   // "Nenhuma lógica duplicada... tudo vindo do Decision Center" — reusa
@@ -750,6 +791,59 @@ export default async function DecisionCenter() {
 
       {/* ================= SEÇÃO 8 — WEALTH COACH (Sprint 2.8) ================= */}
       <InvestmentCoach insight={wealthCoachInsight} />
+
+      {/* ================= MARKET SCAN (Sprint 2.10) — só 3+3+3, nunca a lista inteira ================= */}
+      {(oportunidadesMeuDash.length > 0 || riscosMeuDash.length > 0 || mudancasMeuDash.length > 0) && (
+        <Bloco titulo="Market Scan" subtitulo="O que realmente mudou desde ontem — só o que merece atenção">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div>
+              <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-emerald-400">Oportunidades</p>
+              {oportunidadesMeuDash.length === 0 ? (
+                <p className="text-[11px] text-slate-600">Nenhuma na carteira hoje.</p>
+              ) : (
+                <div className="space-y-1">
+                  {oportunidadesMeuDash.map((o) => (
+                    <div key={o.ticker} className="rounded-md border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 text-[11px]">
+                      <Link href={`/tese/${o.ticker}`} className="font-mono font-semibold text-emerald-300 hover:underline">{o.ticker}</Link>
+                      <span className="ml-1 text-slate-500">— {o.nivel}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-red-400">Riscos</p>
+              {riscosMeuDash.length === 0 ? (
+                <p className="text-[11px] text-slate-600">Nenhum identificado hoje.</p>
+              ) : (
+                <div className="space-y-1">
+                  {riscosMeuDash.map((r) => (
+                    <div key={r.chave} className="rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1 text-[11px] text-red-200">{r.titulo}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-sky-400">Mudanças na Carteira</p>
+              {mudancasMeuDash.length === 0 ? (
+                <p className="text-[11px] text-slate-600">Nada mudou nas últimas 24h.</p>
+              ) : (
+                <div className="space-y-1">
+                  {mudancasMeuDash.map((m) => (
+                    <div key={`${m.ticker}-${m.dimensao}`} className="rounded-md border border-sky-500/20 bg-sky-500/5 px-2 py-1 text-[11px] text-sky-200">
+                      <span className="font-mono font-semibold">{m.ticker}</span> — {m.texto}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <p className="mt-2 text-[9.5px] text-slate-700">
+            Cobertura de mudança hoje: só tese (eventos_tese, real). Carry/Quality/Growth/Portfolio Fit/Convicção/Técnica
+            rodam completos no scan diário (cron) — ver Market Scan Engine na documentação.
+          </p>
+        </Bloco>
+      )}
 
       {/* ================= BARRA SUPERIOR — 10 cards compactos, ≤90px ================= */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-10">

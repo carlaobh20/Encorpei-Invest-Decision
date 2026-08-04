@@ -33,6 +33,7 @@ import { calcularWealthEngine } from "@/lib/wealth-engine";
 import { mediaSetor, compararComSetor } from "@/lib/dash-narrativa";
 import { gerarCoachInsight } from "@/lib/coach-insights";
 import { gerarDecisionLesson } from "@/lib/decision-lessons";
+import { detectarMudancaTese } from "@/lib/market-scan-change-detection";
 import { InvestmentCoach } from "@/components/InvestmentCoach";
 
 export const dynamic = "force-dynamic";
@@ -235,6 +236,14 @@ export default async function DecisionCenter() {
   const tesesTickers = tesesLinhas.map((t) => t.ticker);
   const perfilTesePorTicker: Map<string, PerfilTese> = await montarStatusTeses(supabase, tesesTickers, decisions, geradoEm);
 
+  // ---------- Market Scan (Bloco 2, Sprint 2.10) — consome eventos_tese já buscado acima, nunca recalcula ----------
+  const eventosTeseParaScan = eventos
+    .filter((e) => e.teses?.ticker)
+    .map((e) => ({ ticker: e.teses!.ticker, tipo: e.tipo, criado_em: e.criado_em, descricao: e.explicacao }));
+  const mudancasDecisionCenter = tesesTickers
+    .map((ticker) => detectarMudancaTese(ticker, eventosTeseParaScan))
+    .filter((m): m is NonNullable<typeof m> => m !== null);
+
   // ---------- Alertas com severidade (mesmo motor do Meu Dash, alertas.ts) ----------
   const TIPOS_ALERTA = new Set(["gatilho_disparado", "mudanca_status", "criacao", "revisao"]);
   const alertasClassificados = eventos.map((e) => {
@@ -391,6 +400,21 @@ export default async function DecisionCenter() {
 
       {/* ================= Investment Coach (Bloco 2, Sprint 2.7) — no máximo 1 por tela ================= */}
       <InvestmentCoach insight={coachInsight} />
+
+      {/* ================= Market Scan — Mudanças Detectadas (Bloco 2, Sprint 2.10) ================= */}
+      {/* "Consumir diretamente os eventos gerados pelo Market Scan, nunca recalcular" — reaproveita o MESMO
+          detectarMudancaTese do Módulo 2 sobre o MESMO eventos_tese que este Hero já lê pra severidade dos alertas. */}
+      {mudancasDecisionCenter.length > 0 && (
+        <Secao titulo="Market Scan — Mudanças Detectadas">
+          <div className="space-y-1">
+            {mudancasDecisionCenter.slice(0, 8).map((m) => (
+              <div key={`${m.ticker}-${m.dimensao}`} className="rounded-md border border-sky-500/20 bg-sky-500/5 px-2 py-1 text-[11px] text-sky-200">
+                <span className="font-mono font-semibold">{m.ticker}</span> — {m.texto}
+              </div>
+            ))}
+          </div>
+        </Secao>
+      )}
 
       {/* ================= SEÇÃO 7 — Card IA (logo abaixo do Hero, é o resumo da tela) ================= */}
       <Secao titulo="O que merece minha atenção hoje?" subtitulo="Narrativa por template — 100% dado real, nunca um modelo de linguagem decidindo (sem chave de LLM configurada, ver decision-center-narrativa.ts).">
