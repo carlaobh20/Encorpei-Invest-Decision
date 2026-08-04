@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { calcularScore } from "@/lib/score";
-import { lucroLTM, roicMedia4Tri } from "@/lib/fundamentos";
-import { indicadorPermitido } from "@/lib/setores";
+import { calcularScorePorModelo } from "@/lib/score-setorial";
+import { lucroLTM, ltmCampo, roicMedia4Tri } from "@/lib/fundamentos";
+import { ehModeloFinanceiro, indicadorPermitido } from "@/lib/setores";
 import { marketCapSelecionado } from "@/lib/marketcap";
+import { escadaCarry } from "@/lib/carry/escada";
 
 /**
  * MOTOR DE GATILHOS — coração da Tese Viva.
@@ -140,16 +142,40 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ================= DECISION ENGINE v1 =================
-  // Depois dos gatilhos, calcula o score do dia de cada empresa com tese.
-  // Regras puras (src/lib/score.ts) espelhando versao_algoritmo = 1.
+  // ================= DECISION ENGINE =================
+  // Depois dos gatilhos, calcula o score e o carry do dia de cada empresa
+  // com tese. Regras puras (src/lib/score.ts / score-setorial.ts / carry/).
+  //
+  // "Fiação do motor" (03-04/08/2026): até aqui esta rota só usava o motor
+  // genérico (calcularScore, sempre versao=1) e nunca escrevia em
+  // carry_score — mesmo com Sector Intelligence e fluxo_caixa já em uso no
+  // Radar/Comparador/Compounders havia dias. Não existe uma coluna
+  // "vigente" em versao_algoritmo, então o interruptor aqui é literal: só
+  // troca pro motor setorial (calcularScorePorModelo, versao_algoritmo=2)
+  // se essa linha existir DE VERDADE no banco. Se não existir (ex.: ambiente
+  // novo sem a migração 013 aplicada ainda), fica no v1 e registra isso na
+  // resposta — nunca assume silenciosamente.
   const hojeSP = new Date(Date.now() - 3 * 3_600_000).toISOString().slice(0, 10);
   let scores_gravados = 0;
+  let carry_gravados = 0;
+
+  const { data: v2row, error: errV2 } = await supabase
+    .from("versao_algoritmo")
+    .select("versao")
+    .eq("versao", 2)
+    .limit(1);
+  const usarScoreV2 = !errV2 && (v2row?.length ?? 0) > 0;
+  if (!usarScoreV2) {
+    console.warn(
+      "[avaliar] versao_algoritmo=2 não encontrada no banco — mantendo motor genérico v1. " +
+        (errV2 ? `Erro: ${errV2.message}` : "Migração 013 parece ausente.")
+    );
+  }
 
   for (const tese of teses ?? []) {
     const { data: funds } = await supabase
       .from("fundamentos")
-      .select("competencia, fonte, roic, margem_liquida, divida_liquida, patrimonio_liquido, lucro_liquido")
+      .select("competencia, fonte, receita_liquida, roic, margem_liquida, divida_liquida, patrimonio_liquido, lucro_liquido")
       .eq("ticker", tese.ticker)
       .order("competencia", { ascending: false });
     if (!funds || funds.length === 0) continue;
@@ -163,7 +189,7 @@ export async function GET(req: NextRequest) {
     // fechamento). A auditoria de 01/08/2026 pegou a brapi informando
     // market_cap errado para MULT3 (metade do real) e EGIE3 (~25% a mais);
     // brapi agora é apenas fallback quando não temos o nº de ações.
-    const [{ data: acoes }, { data: precoRec }, { data: precoMc }] =
+    const [{ data: acoes }, { data: precoRec }, { data: precoMc }, { data: fluxoRaw, error: errFluxo }] =
       await Promise.all([
         supabase
           .from("acoes_totais")
@@ -183,7 +209,22 @@ export async function GET(req: NextRequest) {
           .not("market_cap", "is", null)
           .order("data", { ascending: false })
           .limit(1),
+        // fluxo_caixa (migração 011) — alimenta o Carry Growth/Cash. Se a
+        // tabela ainda não existir num ambiente novo, vem erro aqui e os
+        // 3 campos LTM abaixo ficam null (nunca inventados); o carry cai
+        // pro degrau Floor, que não depende de DFC.
+        supabase
+          .from("fluxo_caixa")
+          .select("competencia, fonte, caixa_operacional, capex, dividendos_jcp")
+          .eq("ticker", tese.ticker)
+          .order("competencia", { ascending: false }),
       ]);
+    if (errFluxo) {
+      console.warn(
+        `[avaliar] fluxo_caixa indisponível para ${tese.ticker} (migração 011 pendente?): ${errFluxo.message}`
+      );
+    }
+    const fluxo = fluxoRaw ?? [];
     const qtdAcoes = acoes?.[0]?.qtd_acoes ? Number(acoes[0].qtd_acoes) : null;
     const fechRec = precoRec?.[0]?.fechamento
       ? Number(precoRec[0].fechamento)
@@ -209,36 +250,59 @@ export async function GET(req: NextRequest) {
       .slice(0, 6)
       .map((f) => Number(f.margem_liquida));
 
+    const patrimonioNum =
+      maisRecente.patrimonio_liquido !== null ? Number(maisRecente.patrimonio_liquido) : null;
+    const roicNum =
+      indicadorPermitido(tese.ticker, "roic") && maisRecente.roic !== null
+        ? Number(maisRecente.roic)
+        : null;
+    const margemNum =
+      maisRecente.margem_liquida !== null ? Number(maisRecente.margem_liquida) : null;
+    const dividaNum =
+      indicadorPermitido(tese.ticker, "divida_liquida") && maisRecente.divida_liquida !== null
+        ? Number(maisRecente.divida_liquida)
+        : null;
+    // ROE (12m ÷ patrimônio) — só entra na régua setorial (v2) de
+    // financeiras, que usa ROE no lugar de ROIC (não faz sentido pra banco).
+    const roeNum =
+      lucro_ltm !== null && patrimonioNum !== null && patrimonioNum > 0
+        ? lucro_ltm / patrimonioNum
+        : null;
+
     // Sector Intelligence (auditoria de 03/08/2026): ROIC e dívida líquida
     // não existem no sentido industrial para banco/seguradora — sem este
     // gate, o SCORE OFICIAL (gravado, imutável) de BBDC4/BBAS3/BBSE3/CXSE3
     // ficava contaminado por "dívida"/"ROIC" que não fazem sentido para o
     // modelo, sempre que o filing da CVM populava esses campos por acaso.
-    const resultado = calcularScore({
-      roic:
-        indicadorPermitido(tese.ticker, "roic") && maisRecente.roic !== null
-          ? Number(maisRecente.roic)
-          : null,
-      margem_liquida:
-        maisRecente.margem_liquida !== null ? Number(maisRecente.margem_liquida) : null,
-      divida_liquida:
-        indicadorPermitido(tese.ticker, "divida_liquida") && maisRecente.divida_liquida !== null
-          ? Number(maisRecente.divida_liquida)
-          : null,
-      patrimonio_liquido:
-        maisRecente.patrimonio_liquido !== null
-          ? Number(maisRecente.patrimonio_liquido)
-          : null,
-      lucro_ltm,
-      market_cap: marketCap,
-      margens_trimestrais: margensTri,
-    });
+    // Motor: v2 (calcularScorePorModelo, réguas por modelo de negócio)
+    // quando versao_algoritmo=2 existe no banco; senão v1 (calcularScore),
+    // igual ao comportamento anterior à fiação de hoje.
+    const resultado = usarScoreV2
+      ? calcularScorePorModelo(tese.ticker, {
+          roic: roicNum,
+          roe: roeNum,
+          margem_liquida: margemNum,
+          divida_liquida: dividaNum,
+          patrimonio_liquido: patrimonioNum,
+          lucro_ltm,
+          market_cap: marketCap,
+          margens_trimestrais: margensTri,
+        })
+      : calcularScore({
+          roic: roicNum,
+          margem_liquida: margemNum,
+          divida_liquida: dividaNum,
+          patrimonio_liquido: patrimonioNum,
+          lucro_ltm,
+          market_cap: marketCap,
+          margens_trimestrais: margensTri,
+        });
 
     // histórico imutável: primeiro cálculo do dia prevalece
     const { error: errScore } = await supabase.from("scores").insert({
       ticker: tese.ticker,
       data: hojeSP,
-      versao: 1,
+      versao: usarScoreV2 ? 2 : 1,
       qualidade: resultado.qualidade,
       valuation: resultado.valuation,
       risco: resultado.risco,
@@ -247,6 +311,77 @@ export async function GET(req: NextRequest) {
       decomposicao: resultado.decomposicao,
     });
     if (!errScore) scores_gravados++;
+
+    // ---------- Carry (novo: grava carry_score diário) ----------
+    // Mesmos insumos que Radar/Comparador já montam pra tela — aqui viram
+    // histórico oficial imutável, um por dia por empresa com tese.
+    const roic4 = indicadorPermitido(tese.ticker, "roic") ? roicMedia4Tri(funds) : null;
+    const caixaLiquido =
+      indicadorPermitido(tese.ticker, "divida_liquida") && dividaNum !== null
+        ? dividaNum <= 0
+        : null;
+    const alavancagem =
+      dividaNum !== null && patrimonioNum !== null && patrimonioNum > 0
+        ? dividaNum / patrimonioNum
+        : null;
+    const dfps = funds
+      .filter((f) => f.fonte === "cvm_dfp")
+      .sort((a, b) => b.competencia.localeCompare(a.competencia));
+    const crescReceitaAnual =
+      dfps.length >= 2 &&
+      dfps[0].receita_liquida !== null &&
+      dfps[1].receita_liquida !== null &&
+      Number(dfps[1].receita_liquida) > 0
+        ? Number(dfps[0].receita_liquida) / Number(dfps[1].receita_liquida) - 1
+        : null;
+    const margensDesvio =
+      margensTri.length >= 3
+        ? Math.sqrt(
+            margensTri.reduce((acc, mv) => {
+              const med = margensTri.reduce((x, y) => x + y, 0) / margensTri.length;
+              return acc + (mv - med) ** 2;
+            }, 0) / margensTri.length
+          )
+        : null;
+    const ehFinanceira = ehModeloFinanceiro(tese.ticker);
+    // DFC ITR é acumulada no ano — ltmCampo já implementa a regra oficial
+    // (12m = DFP + acumulado atual − acumulado equivalente do ano anterior),
+    // mesma função usada em comparar/page.tsx e compounder-dados.ts.
+    const dividendosJcpLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.dividendos_jcp) : null;
+    const caixaOperacionalLtm =
+      fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.caixa_operacional) : null;
+    const capexLtm = fluxo.length > 0 ? ltmCampo(fluxo, (f) => f.capex) : null;
+
+    const degraus = escadaCarry({
+      lucroLtm: lucro_ltm,
+      marketCap,
+      roic4,
+      margensDesvio,
+      caixaLiquido,
+      alavancagem,
+      crescReceitaAnual,
+      ehFinanceira,
+      dividendosJcpLtm,
+      caixaOperacionalLtm,
+      capexLtm,
+    });
+    // usa o degrau mais alto já calculável (Cash > Growth > Floor) — o
+    // Floor sempre tem "resultado" preenchido (mesmo com carryReal null e
+    // explicação de pendência), então sempre sobra pelo menos ele.
+    const melhorDegrau = [...degraus].reverse().find((d) => d.resultado !== null) ?? degraus[0];
+    if (melhorDegrau.resultado) {
+      const { error: errCarry } = await supabase.from("carry_score").insert({
+        ticker: tese.ticker,
+        data: hojeSP,
+        versao: melhorDegrau.resultado.versao,
+        metodo: melhorDegrau.resultado.metodo,
+        carry_real: melhorDegrau.resultado.carryReal,
+        confianca: melhorDegrau.resultado.confianca,
+        explicacao: melhorDegrau.resultado.explicacao,
+        fatores: melhorDegrau.resultado.fatores,
+      });
+      if (!errCarry) carry_gravados++;
+    }
   }
 
   // ---------- ALERTA POR E-MAIL (ativa quando RESEND_API_KEY existir) ----------
@@ -286,6 +421,8 @@ export async function GET(req: NextRequest) {
     teses_avaliadas: teses?.length ?? 0,
     disparos,
     scores_gravados,
+    carry_gravados,
+    versao_algoritmo_usada: usarScoreV2 ? 2 : 1,
     alerta_email,
     executado_em: new Date().toISOString(),
   });
