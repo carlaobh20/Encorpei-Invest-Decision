@@ -1,5 +1,5 @@
 # Management Intelligence v0 — coleta IPE (CVM)
-Gerado em 2026-08-05
+Gerado em 2026-08-06
 
 
 ## 2025: arquivos no zip: ['ipe_cia_aberta_2025.csv']
