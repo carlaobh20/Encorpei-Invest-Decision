@@ -1,6 +1,6 @@
 -- ENCORPEI — Migração 015: benchmarks oficiais (CDI, IPCA via BCB/SGS;
 -- Ibovespa via brapi, sincronizado pela rota de coleta — não neste seed).
--- Destrava a comparação da Carteira com referências reais. Gerado 2026-08-06.
+-- Destrava a comparação da Carteira com referências reais. Gerado 2026-08-07.
 
 create table if not exists benchmarks_diarios (
   id bigint generated always as identity primary key,
@@ -16,7 +16,6 @@ drop policy if exists "leitura publica benchmarks" on benchmarks_diarios;
 create policy "leitura publica benchmarks" on benchmarks_diarios for select using (true);
 
 insert into benchmarks_diarios (indicador, data, valor) values
-  ('CDI', '2025-07-02', 0.055131),
   ('CDI', '2025-07-03', 0.055131),
   ('CDI', '2025-07-04', 0.055131),
   ('CDI', '2025-07-07', 0.055131),
