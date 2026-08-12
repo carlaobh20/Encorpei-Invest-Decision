@@ -1,74 +1,77 @@
 # Relatório do backfill CVM
-Gerado em 2026-08-11
+Gerado em 2026-08-12
 
-Períodos extraídos: **260** · Empresas com dados: **40/40**
+Períodos extraídos: **0** · Empresas com dados: **0/40**
 
-## Composição de capital — ajustes de escala
+## ⚠️ Sem dados (verificar mapeamento de nome): PETR4, PRIO3, VALE3, GGBR4, SUZB3, KLBN11, ITUB4, BBDC4, BBAS3, B3SA3, BBSE3, CXSE3, PSSA3, ABEV3, WEGE3, INTB3, TOTS3, RENT3, LREN3, MGLU3, RADL3, EQTL3, TAEE11, EGIE3, CPLE3, AXIA3, SBSP3, UGPA3, VBBR3, HYPE3, FLRY3, HAPV3, RDOR3, VIVT3, TIMS3, CYRE3, EZTC3, MULT3, SLCE3, SMTO3
 
-- ABEV3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 0.98)
-- AXIA3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 2.23)
-- CXSE3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 1.43)
-- CYRE3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 4.39)
-- ITUB4: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 4.07)
-- LREN3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 1.45)
-- TAEE11: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 1.53)
-- TIMS3: sem lucro anual para validar a escala do nº de ações — valor bruto mantido (2392125889), conferir
-- VALE3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 3.25)
-- VBBR3: composição informada em MILHARES → ×1000 (lucro/ação normalizado: R$ 1.67)
+### Diagnóstico — nomes parecidos vistos nos arquivos:
+
+- PETR4 (buscando 'PETROL'): nenhum
+- PRIO3 (buscando 'PRIO'): nenhum
+- VALE3 (buscando 'VALE'): nenhum
+- GGBR4 (buscando 'GERDAU'): nenhum
+- SUZB3 (buscando 'SUZANO'): nenhum
+- KLBN11 (buscando 'KLABIN'): nenhum
+- ITUB4 (buscando 'ITAU'): nenhum
+- BBDC4 (buscando 'BCO'): nenhum
+- BBAS3 (buscando 'BCO'): nenhum
+- B3SA3 (buscando 'B'): nenhum
+- BBSE3 (buscando 'BB'): nenhum
+- CXSE3 (buscando 'CAIXA'): nenhum
+- PSSA3 (buscando 'PORTO'): nenhum
+- ABEV3 (buscando 'AMBEV'): nenhum
+- WEGE3 (buscando 'WEG'): nenhum
+- INTB3 (buscando 'INTELB'): nenhum
+- TOTS3 (buscando 'TOTVS'): nenhum
+- RENT3 (buscando 'LOCALI'): nenhum
+- LREN3 (buscando 'LOJAS'): nenhum
+- MGLU3 (buscando 'MAGAZI'): nenhum
+- RADL3 (buscando 'RAIA'): nenhum
+- EQTL3 (buscando 'EQUATO'): nenhum
+- TAEE11 (buscando 'TRANSM'): nenhum
+- EGIE3 (buscando 'ENGIE'): nenhum
+- CPLE3 (buscando 'PARANA'): nenhum
+- AXIA3 (buscando 'AXIA'): nenhum
+- SBSP3 (buscando 'SANEAM'): nenhum
+- UGPA3 (buscando 'ULTRAP'): nenhum
+- VBBR3 (buscando 'VIBRA'): nenhum
+- HYPE3 (buscando 'HYPERA'): nenhum
+- FLRY3 (buscando 'FLEURY'): nenhum
+- HAPV3 (buscando 'HAPVID'): nenhum
+- RDOR3 (buscando 'REDE'): nenhum
+- VIVT3 (buscando 'TELEFN'): nenhum
+- TIMS3 (buscando 'TIM'): nenhum
+- CYRE3 (buscando 'CYRELA'): nenhum
+- EZTC3 (buscando 'EZ'): nenhum
+- MULT3 (buscando 'MULTIP'): nenhum
+- SLCE3 (buscando 'SLC'): nenhum
+- SMTO3 (buscando 'SAO'): nenhum
 
 ## Períodos por empresa
 
-- **ABEV3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **AXIA3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **B3SA3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **BBAS3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **BBDC4**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **BBSE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **CPLE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **CXSE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **CYRE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **EGIE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **EQTL3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **EZTC3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **FLRY3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **GGBR4**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **HAPV3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **HYPE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **INTB3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **ITUB4**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **KLBN11**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **LREN3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **MGLU3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **MULT3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **PETR4**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **PRIO3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **PSSA3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **RADL3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **RDOR3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **RENT3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **SBSP3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **SLCE3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **SMTO3**: 5 períodos — 2024-03-31 (cvm_dfp), 2025-03-31 (cvm_dfp), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_itr)
-- **SUZB3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **TAEE11**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **TIMS3**: 2 períodos — 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **TOTS3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **UGPA3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **VALE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **VBBR3**: 6 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr)
-- **VIVT3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
-- **WEGE3**: 7 períodos — 2024-12-31 (cvm_dfp), 2025-03-31 (cvm_itr), 2025-06-30 (cvm_itr), 2025-09-30 (cvm_itr), 2025-12-31 (cvm_dfp), 2026-03-31 (cvm_itr), 2026-06-30 (cvm_itr)
 
 ## Log de execução
 
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2024.zip
-    DFP 2024: acumulado 39 períodos
+      tentativa 1/3 falhou (ConnectionError); aguardando 30s
+      tentativa 2/3 falhou (ConnectionError); aguardando 30s
+      tentativa 3/3 falhou (ConnectionError); aguardando 30s
+      !! desistiu após 3 tentativas — pulando este arquivo
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip
-    DFP 2025: acumulado 78 períodos
+      tentativa 1/3 falhou (ConnectionError); aguardando 30s
+      tentativa 2/3 falhou (ConnectionError); aguardando 30s
+      tentativa 3/3 falhou (ConnectionError); aguardando 30s
+      !! desistiu após 3 tentativas — pulando este arquivo
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2025.zip
-    ITR 2025: acumulado 195 períodos
+      tentativa 1/3 falhou (ConnectionError); aguardando 30s
+      tentativa 2/3 falhou (ConnectionError); aguardando 30s
+      tentativa 3/3 falhou (ConnectionError); aguardando 30s
+      !! desistiu após 3 tentativas — pulando este arquivo
     Baixando https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip
-    ITR 2026: acumulado 260 períodos
-    acoes_totais: seed gerado com 40 tickers
-    JSON de sincronização: 260 períodos + 40 ações
-    DFC: 262 períodos de fluxo de caixa extraídos
+      tentativa 1/3 falhou (ConnectionError); aguardando 30s
+      tentativa 2/3 falhou (ConnectionError); aguardando 30s
+      tentativa 3/3 falhou (ConnectionError); aguardando 30s
+      !! desistiu após 3 tentativas — pulando este arquivo
+    JSON de sincronização: 0 períodos + 0 ações
+    DFC: 0 períodos de fluxo de caixa extraídos
