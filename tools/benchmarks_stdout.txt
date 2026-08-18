@@ -1,1 +1,1 @@
-ok: 301 observações de benchmarks (CDI/IPCA)
+ok: 302 observações de benchmarks (CDI/IPCA)
