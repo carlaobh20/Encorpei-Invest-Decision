@@ -2,7 +2,7 @@
 -- CVM, composicao_capital do ITR/DFP). Usado pelo motor para calcular o
 -- valor de mercado (fechamento × qtd_acoes); brapi é apenas fallback.
 -- Escala normalizada por lucro/ação (empresas informam ora em unidades,
--- ora em milhares). Gerado automaticamente pelo GitHub Actions em 2026-08-18.
+-- ora em milhares). Gerado automaticamente pelo GitHub Actions em 2026-08-19.
 
 create table if not exists acoes_totais (
   ticker text primary key references empresas(ticker),

@@ -1,5 +1,5 @@
 # Relatório do backfill CVM
-Gerado em 2026-08-18
+Gerado em 2026-08-19
 
 Períodos extraídos: **274** · Empresas com dados: **40/40**
 

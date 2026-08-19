@@ -1,5 +1,5 @@
 -- ENCORPEI INVEST — Migração 002: fundamentos (dados abertos CVM)
--- Gerado automaticamente pelo GitHub Actions em 2026-08-18
+-- Gerado automaticamente pelo GitHub Actions em 2026-08-19
 
 -- Correções de universo (idempotentes):
 insert into public.empresas (ticker, nome, setor) values
