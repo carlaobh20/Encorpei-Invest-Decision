@@ -1,6 +1,6 @@
 -- ENCORPEI — Migração 010: comunicações OFICIAIS (dataset IPE/CVM).
 -- Fatos relevantes, comunicados e apresentações protocolados pela própria
--- companhia — matéria-prima do Management Intelligence. Gerado 2026-08-19.
+-- companhia — matéria-prima do Management Intelligence. Gerado 2026-08-20.
 
 create table if not exists comunicados_oficiais (
   id bigint generated always as identity primary key,
